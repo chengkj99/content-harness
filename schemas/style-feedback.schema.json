@@ -1,0 +1,96 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "lesson_id": {
+      "title": "Lesson Id",
+      "type": "string"
+    },
+    "run_id": {
+      "title": "Run Id",
+      "type": "string"
+    },
+    "artifact": {
+      "title": "Artifact",
+      "type": "string"
+    },
+    "scope": {
+      "enum": [
+        "run",
+        "author",
+        "scenario"
+      ],
+      "title": "Scope",
+      "type": "string"
+    },
+    "scenario": {
+      "title": "Scenario",
+      "type": "string"
+    },
+    "reason": {
+      "title": "Reason",
+      "type": "string"
+    },
+    "before_hash": {
+      "title": "Before Hash",
+      "type": "string"
+    },
+    "after_hash": {
+      "title": "After Hash",
+      "type": "string"
+    },
+    "diff": {
+      "title": "Diff",
+      "type": "string"
+    },
+    "proposed_rule": {
+      "default": "",
+      "title": "Proposed Rule",
+      "type": "string"
+    },
+    "eval_proposal": {
+      "default": "",
+      "title": "Eval Proposal",
+      "type": "string"
+    },
+    "review_after": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Review After"
+    },
+    "status": {
+      "default": "candidate",
+      "enum": [
+        "candidate",
+        "promoted"
+      ],
+      "title": "Status",
+      "type": "string"
+    }
+  },
+  "required": [
+    "lesson_id",
+    "run_id",
+    "artifact",
+    "scope",
+    "scenario",
+    "reason",
+    "before_hash",
+    "after_hash",
+    "diff"
+  ],
+  "title": "Feedback",
+  "type": "object"
+}

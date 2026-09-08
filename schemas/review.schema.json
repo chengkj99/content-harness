@@ -1,0 +1,130 @@
+{
+  "$defs": {
+    "Assessment": {
+      "additionalProperties": false,
+      "properties": {
+        "claim_id": {
+          "title": "Claim Id",
+          "type": "string"
+        },
+        "support": {
+          "enum": [
+            "direct",
+            "partial",
+            "contextual",
+            "none",
+            "not-applicable"
+          ],
+          "title": "Support",
+          "type": "string"
+        },
+        "reason": {
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "claim_id",
+        "support",
+        "reason"
+      ],
+      "title": "Assessment",
+      "type": "object"
+    },
+    "Finding": {
+      "additionalProperties": false,
+      "properties": {
+        "location": {
+          "title": "Location",
+          "type": "string"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        },
+        "fix": {
+          "title": "Fix",
+          "type": "string"
+        },
+        "severity": {
+          "enum": [
+            "warning",
+            "blocker"
+          ],
+          "title": "Severity",
+          "type": "string"
+        }
+      },
+      "required": [
+        "location",
+        "reason",
+        "fix",
+        "severity"
+      ],
+      "title": "Finding",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "input_hashes": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Input Hashes",
+      "type": "object"
+    },
+    "verdict": {
+      "enum": [
+        "pass",
+        "warn",
+        "fail"
+      ],
+      "title": "Verdict",
+      "type": "string"
+    },
+    "summary": {
+      "minLength": 1,
+      "title": "Summary",
+      "type": "string"
+    },
+    "findings": {
+      "items": {
+        "$ref": "#/$defs/Finding"
+      },
+      "title": "Findings",
+      "type": "array"
+    },
+    "assessments": {
+      "items": {
+        "$ref": "#/$defs/Assessment"
+      },
+      "title": "Assessments",
+      "type": "array"
+    },
+    "fidelity": {
+      "enum": [
+        "pass",
+        "fail"
+      ],
+      "title": "Fidelity",
+      "type": "string"
+    }
+  },
+  "required": [
+    "input_hashes",
+    "verdict",
+    "summary",
+    "findings",
+    "fidelity"
+  ],
+  "title": "Review",
+  "type": "object"
+}

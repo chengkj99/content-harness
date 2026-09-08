@@ -1,0 +1,74 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "path": {
+      "title": "Path",
+      "type": "string"
+    },
+    "status": {
+      "default": "missing",
+      "enum": [
+        "missing",
+        "in_progress",
+        "done",
+        "blocked",
+        "stale"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "revision": {
+      "default": 0,
+      "title": "Revision",
+      "type": "integer"
+    },
+    "content_hash": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Content Hash"
+    },
+    "registered_hash": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Registered Hash"
+    },
+    "depends_on": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Depends On",
+      "type": "object"
+    },
+    "reason": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Reason"
+    }
+  },
+  "required": [
+    "path"
+  ],
+  "title": "Artifact",
+  "type": "object"
+}

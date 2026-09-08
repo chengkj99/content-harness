@@ -1,0 +1,143 @@
+{
+  "schema_version": 1,
+  "id": "wechat-longform",
+  "artifacts": {
+    "idea": {
+      "path": "artifacts/00-idea.md",
+      "depends_on": [],
+      "skill": "content-harness",
+      "check": "text"
+    },
+    "sources": {
+      "path": "artifacts/10-sources.yaml",
+      "depends_on": [
+        "idea"
+      ],
+      "skill": "research-claims",
+      "check": "sources"
+    },
+    "claims": {
+      "path": "artifacts/11-claims.yaml",
+      "depends_on": [
+        "sources"
+      ],
+      "skill": "research-claims",
+      "check": "claims"
+    },
+    "brief": {
+      "path": "artifacts/20-brief.md",
+      "depends_on": [
+        "idea",
+        "sources",
+        "claims"
+      ],
+      "skill": "shape-brief",
+      "check": "brief"
+    },
+    "style-spec": {
+      "path": "artifacts/25-style-spec.yaml",
+      "depends_on": [
+        "brief"
+      ],
+      "skill": "select-style",
+      "check": "style",
+      "gate": "brief"
+    },
+    "outline": {
+      "path": "artifacts/30-outline.md",
+      "depends_on": [
+        "brief",
+        "style-spec"
+      ],
+      "skill": "design-outline",
+      "check": "text"
+    },
+    "draft": {
+      "path": "artifacts/40-draft.md",
+      "depends_on": [
+        "brief",
+        "outline",
+        "claims",
+        "style-spec"
+      ],
+      "skill": "write-draft",
+      "check": "draft"
+    },
+    "manuscript": {
+      "path": "artifacts/41-manuscript.md",
+      "depends_on": [
+        "draft",
+        "style-spec"
+      ],
+      "skill": "refine-style",
+      "check": "manuscript"
+    },
+    "style-report": {
+      "path": "artifacts/42-style-report.yaml",
+      "depends_on": [
+        "draft",
+        "manuscript",
+        "style-spec"
+      ],
+      "skill": "refine-style",
+      "check": "style-report"
+    },
+    "fact-review": {
+      "path": "artifacts/50-fact-review.yaml",
+      "depends_on": [
+        "manuscript",
+        "claims",
+        "style-report"
+      ],
+      "skill": "review-draft",
+      "check": "fact-review"
+    },
+    "editorial-review": {
+      "path": "artifacts/51-editorial-review.md",
+      "depends_on": [
+        "brief",
+        "manuscript",
+        "style-spec",
+        "style-report"
+      ],
+      "skill": "review-draft",
+      "check": "review"
+    },
+    "visual-plan": {
+      "path": "artifacts/52-visual-plan.yaml",
+      "depends_on": [
+        "manuscript",
+        "claims",
+        "fact-review",
+        "editorial-review"
+      ],
+      "skill": "plan-visuals",
+      "check": "visual-plan"
+    },
+    "visual-assets": {
+      "path": "artifacts/53-visual-assets.yaml",
+      "depends_on": [
+        "visual-plan"
+      ],
+      "skill": "build-visuals",
+      "check": "visual-assets"
+    },
+    "publish-package": {
+      "path": "artifacts/60-publish-package",
+      "depends_on": [
+        "brief",
+        "manuscript",
+        "fact-review",
+        "editorial-review",
+        "visual-assets",
+        "style-report"
+      ],
+      "skill": "package-wechat",
+      "check": "package"
+    }
+  },
+  "gates": {
+    "brief": "brief",
+    "publish": "publish-package"
+  }
+}

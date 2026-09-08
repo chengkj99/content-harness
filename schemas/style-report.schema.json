@@ -1,0 +1,55 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "input_hashes": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Input Hashes",
+      "type": "object"
+    },
+    "changes": {
+      "items": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "title": "Changes",
+      "type": "array"
+    },
+    "rejected": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Rejected",
+      "type": "array"
+    },
+    "fidelity": {
+      "enum": [
+        "pass",
+        "fail"
+      ],
+      "title": "Fidelity",
+      "type": "string"
+    },
+    "reason": {
+      "minLength": 1,
+      "title": "Reason",
+      "type": "string"
+    }
+  },
+  "required": [
+    "input_hashes",
+    "changes",
+    "rejected",
+    "fidelity",
+    "reason"
+  ],
+  "title": "StyleReport",
+  "type": "object"
+}

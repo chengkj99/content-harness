@@ -1,0 +1,57 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "base": {
+      "additionalProperties": true,
+      "title": "Base",
+      "type": "object"
+    },
+    "style_stack": {
+      "additionalProperties": true,
+      "title": "Style Stack",
+      "type": "object"
+    },
+    "memory_snapshot": {
+      "additionalProperties": true,
+      "title": "Memory Snapshot",
+      "type": "object"
+    },
+    "intensity": {
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "title": "Intensity",
+      "type": "string"
+    },
+    "apply_to": {
+      "additionalProperties": true,
+      "title": "Apply To",
+      "type": "object"
+    },
+    "protected": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Protected",
+      "type": "array"
+    }
+  },
+  "required": [
+    "base",
+    "style_stack",
+    "memory_snapshot",
+    "intensity",
+    "apply_to",
+    "protected"
+  ],
+  "title": "StyleSpec",
+  "type": "object"
+}

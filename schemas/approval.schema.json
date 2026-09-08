@@ -1,0 +1,51 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "approval_id": {
+      "title": "Approval Id",
+      "type": "string"
+    },
+    "at": {
+      "title": "At",
+      "type": "string"
+    },
+    "gate": {
+      "title": "Gate",
+      "type": "string"
+    },
+    "artifact": {
+      "title": "Artifact",
+      "type": "string"
+    },
+    "content_hash": {
+      "title": "Content Hash",
+      "type": "string"
+    },
+    "artifact_revision": {
+      "title": "Artifact Revision",
+      "type": "integer"
+    },
+    "actor": {
+      "const": "human:local-tty",
+      "default": "human:local-tty",
+      "title": "Actor",
+      "type": "string"
+    },
+    "decision": {
+      "const": "approved",
+      "default": "approved",
+      "title": "Decision",
+      "type": "string"
+    }
+  },
+  "required": [
+    "approval_id",
+    "at",
+    "gate",
+    "artifact",
+    "content_hash",
+    "artifact_revision"
+  ],
+  "title": "Approval",
+  "type": "object"
+}

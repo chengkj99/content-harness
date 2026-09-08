@@ -1,0 +1,252 @@
+{
+  "$defs": {
+    "Approval": {
+      "additionalProperties": false,
+      "properties": {
+        "approval_id": {
+          "title": "Approval Id",
+          "type": "string"
+        },
+        "at": {
+          "title": "At",
+          "type": "string"
+        },
+        "gate": {
+          "title": "Gate",
+          "type": "string"
+        },
+        "artifact": {
+          "title": "Artifact",
+          "type": "string"
+        },
+        "content_hash": {
+          "title": "Content Hash",
+          "type": "string"
+        },
+        "artifact_revision": {
+          "title": "Artifact Revision",
+          "type": "integer"
+        },
+        "actor": {
+          "const": "human:local-tty",
+          "default": "human:local-tty",
+          "title": "Actor",
+          "type": "string"
+        },
+        "decision": {
+          "const": "approved",
+          "default": "approved",
+          "title": "Decision",
+          "type": "string"
+        }
+      },
+      "required": [
+        "approval_id",
+        "at",
+        "gate",
+        "artifact",
+        "content_hash",
+        "artifact_revision"
+      ],
+      "title": "Approval",
+      "type": "object"
+    },
+    "Artifact": {
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "status": {
+          "default": "missing",
+          "enum": [
+            "missing",
+            "in_progress",
+            "done",
+            "blocked",
+            "stale"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "revision": {
+          "default": 0,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "content_hash": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Content Hash"
+        },
+        "registered_hash": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Registered Hash"
+        },
+        "depends_on": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Depends On",
+          "type": "object"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reason"
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "title": "Artifact",
+      "type": "object"
+    },
+    "Manifest": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "run_id": {
+          "title": "Run Id",
+          "type": "string"
+        },
+        "workflow": {
+          "title": "Workflow",
+          "type": "string"
+        },
+        "created_at": {
+          "title": "Created At",
+          "type": "string"
+        },
+        "revision": {
+          "default": 0,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "workflow_hash": {
+          "title": "Workflow Hash",
+          "type": "string"
+        },
+        "artifacts": {
+          "additionalProperties": {
+            "$ref": "#/$defs/Artifact"
+          },
+          "title": "Artifacts",
+          "type": "object"
+        },
+        "approvals": {
+          "items": {
+            "$ref": "#/$defs/Approval"
+          },
+          "title": "Approvals",
+          "type": "array"
+        },
+        "style_selection": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Style Selection",
+          "type": "array"
+        },
+        "style_intensity": {
+          "default": "medium",
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ],
+          "title": "Style Intensity",
+          "type": "string"
+        },
+        "claim_verifications": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Claim Verifications",
+          "type": "object"
+        },
+        "exports": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Exports",
+          "type": "object"
+        },
+        "archived": {
+          "default": false,
+          "title": "Archived",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "run_id",
+        "workflow",
+        "created_at",
+        "workflow_hash",
+        "artifacts"
+      ],
+      "title": "Manifest",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "event_id": {
+      "title": "Event Id",
+      "type": "string"
+    },
+    "at": {
+      "title": "At",
+      "type": "string"
+    },
+    "command": {
+      "title": "Command",
+      "type": "string"
+    },
+    "state": {
+      "$ref": "#/$defs/Manifest"
+    }
+  },
+  "required": [
+    "event_id",
+    "at",
+    "command",
+    "state"
+  ],
+  "title": "Event",
+  "type": "object"
+}

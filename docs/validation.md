@@ -36,6 +36,7 @@ uv build
 | Ruff / Schema / 文档相对链接 | 通过 |
 | wheel / sdist 构建 | 通过 |
 | wheel 独立环境安装 | 通过，13 个 Skills、3 套风格 |
+| GitHub Actions 远端执行 | 尚未完成，不计为测试通过 |
 | Codex/Claude/Cursor 的 Skills 目录安装 | 自动化验证，非客户端行为认证 |
 | 人工审批终端流程 | 自动化模拟，非身份认证 |
 | 真实模型调研/写作/评审行为 | 未运行 |
@@ -44,3 +45,5 @@ uv build
 | 公众号发布与 metrics | 未实现 |
 
 剩余工作需要真实任务与用户参与，不能用合成测试替代。[24 项 behavior 任务](../evals/behavior/tasks.yaml)供下一阶段收集记录，均标为 not_run；通过本次机制测试不表示内容质量或传播效果已有提升。GitHub Actions 已配置 Python 3.11/3.12/3.13，远端执行状态以 Actions 实际记录为准。
+
+首次远端运行未进入测试步骤，不能声称 Linux 或 Python 3.12/3.13 已验证。后续需重新执行 workflow，并根据实际结果更新此记录。

@@ -119,16 +119,78 @@ def init(
     path: Annotated[Path, typer.Argument()] = Path("."),
     workflow: str = "wechat-longform",
     preset: str = "default",
+    output_dir: str | None = None,
+    target: str | None = None,
+    read_root: Annotated[list[str] | None, typer.Option(help="允许读取的资料目录，可重复")] = None,
+    dedupe_root: Annotated[
+        list[str] | None, typer.Option(help="检查重复选题的目录，可重复")
+    ] = None,
+    author_file: str | None = None,
+    scenario: str | None = None,
 ):
-    """初始化项目；--preset wiki 使用 Wiki 内容输出目录。"""
+    """初始化写作文件夹；资料、成品目录可选，Wiki 不预设个人目录结构。"""
     workflows.load(workflow)
     require(preset in {"default", "wiki"}, "INVALID_PRESET", preset)
-    result = profiles.init(path, workflow, preset)
+    result = profiles.init(
+        path,
+        workflow,
+        preset,
+        output_dir=output_dir,
+        target=target,
+        read_roots=read_root,
+        dedupe_roots=dedupe_root,
+        author_file=author_file,
+        scenario=scenario,
+    )
     emit(
         {
             "project": str(path.resolve()),
             "profile": result,
-            "next": "Edit author-profile.md, then confirm-author",
+            "next": f"Edit {result['author_sources'][0]}, then confirm-author",
+        }
+    )
+
+
+@command()
+def configure(
+    output_dir: str | None = None,
+    target: str | None = None,
+    read_root: Annotated[list[str] | None, typer.Option()] = None,
+    dedupe_root: Annotated[list[str] | None, typer.Option()] = None,
+    policy_file: Annotated[list[str] | None, typer.Option()] = None,
+    author_file: str | None = None,
+    scenario: str | None = None,
+    clear_read_roots: bool = False,
+    clear_dedupe_roots: bool = False,
+):
+    """查看或调整项目设置；更新目录不移动旧稿，也不改已有文章的场景。"""
+    require(
+        not (read_root and clear_read_roots), "INVALID_ARGUMENT", "read-root or clear-read-roots"
+    )
+    require(
+        not (dedupe_root and clear_dedupe_roots),
+        "INVALID_ARGUMENT",
+        "dedupe-root or clear-dedupe-roots",
+    )
+    options = dict(
+        output_dir=output_dir,
+        target=target,
+        read_roots=[] if clear_read_roots else read_root,
+        dedupe_roots=[] if clear_dedupe_roots else dedupe_root,
+        policy_files=policy_file,
+        author_file=author_file,
+        scenario=scenario,
+    )
+    root = project()
+    value = (
+        profiles.configure(root, **options)
+        if any(v is not None for v in options.values())
+        else profiles.profile(root)
+    )
+    emit(
+        {
+            "profile": value,
+            "note": "Directory changes apply to future exports; existing files stay where they are",
         }
     )
 
@@ -138,7 +200,7 @@ def confirm_author():
     """由用户确认作者资料；内容改变后需重新确认。"""
     root = project()
     content_hash = profiles.author_hash(root)
-    human_confirm(safe_path(root, ".content-harness/author-profile.md").read_text(), content_hash)
+    human_confirm(profiles.author_path(root).read_text(), content_hash)
     with lock(safe_path(root, ".content-harness")):
         require(
             profiles.author_hash(root) == content_hash, "CONFLICT_EXTERNAL_EDIT", "author profile"
@@ -153,15 +215,19 @@ def confirm_author():
 @command()
 def new(
     slug: str,
-    workflow: str = "wechat-longform",
+    workflow: str | None = None,
     style: Annotated[list[str] | None, typer.Option()] = None,
     polish: Annotated[list[str] | None, typer.Option()] = None,
     style_intensity: str = "medium",
+    scenario: str | None = None,
 ):
     """创建一个 run；作者资料须先确认。"""
     identifier(slug)
     root = project()
     config = profiles.profile(root)
+    workflow = workflow or config["workflow"]
+    scenario = scenario or config["style"].get("default_scenario", workflow)
+    identifier(scenario)
     require(profiles.author_confirmed(root), "AUTHOR_CONFIRMATION_REQUIRED", "confirm-author")
     require(style_intensity in {"low", "medium", "high"}, "INVALID_INTENSITY", style_intensity)
     selection = (
@@ -170,10 +236,12 @@ def new(
     ) + (polish or config["style"].get("default_polish", []))
     for item in selection:
         styles.pack(item)
+    flow = workflows.load(workflow)
+    profiles.ensure_scenario(root, scenario)
     run_id = f"{date.today().isoformat()}-{slug}"
     path = safe_path(root, ".content-harness/runs/" + run_id)
     with lock(path):
-        run = Run.create(path, run_id, workflows.load(workflow), selection, style_intensity)
+        run = Run.create(path, run_id, flow, selection, style_intensity, scenario=scenario)
         emit({"run_id": run_id, "path": str(path), "revision": run.state.revision})
 
 
@@ -386,9 +454,11 @@ def style_promote(run_id: str, lesson_id: str):
 
 
 @command()
-def style_rollback(scope: str, version: int, scenario: str = "wechat-longform"):
+def style_rollback(scope: str, version: int, scenario: str | None = None):
     """用户将指定旧版本恢复为新版本，保留历史。"""
     root = project()
+    config = profiles.profile(root)
+    scenario = scenario or config["style"].get("default_scenario", config["workflow"])
     memory_root = safe_path(root, ".content-harness/style-memory")
     path = styles.memory_target(memory_root, scope, scenario)
     expected = digest(path.read_bytes())
@@ -411,7 +481,7 @@ def package(
 
 
 @command()
-def export(run_id: str, target: str = "wechat"):
+def export(run_id: str, target: str | None = None):
     """审批后导出到配置目录，已有文件冲突时拒绝覆盖。"""
     with session(run_id) as (run, root):
         emit({**exporting.export(run, root, target), "revision": run.state.revision})

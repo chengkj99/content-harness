@@ -32,6 +32,7 @@ class Manifest(Strict):
     schema_version: Literal[1] = 1
     run_id: str
     workflow: str
+    scenario: str | None = None
     created_at: str
     revision: int = 0
     workflow_hash: str

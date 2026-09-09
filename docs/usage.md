@@ -1,10 +1,12 @@
-# 操作指南
+# 操作与排错（进阶）
+
+如果你刚开始使用或不熟悉命令，请先阅读 [新手上手指南](getting-started.md) 和 [命令白话手册](commands.md)。本页保留资产操作与故障恢复的细节，供 AI 或需要接管任务的人查阅。
 
 用户主要与 Agent 对话；以下命令用于检查过程和接管任务。所有业务命令输出带 schema_version: 1 的 JSON。全局参数 `--project <path>` 放在子命令前。
 
 ## 完整链路
 
-1. init 创建配置，编辑 author-profile.md，由用户 confirm-author。
+1. init 创建配置，编辑 author_sources 指定的作者资料（默认 author-profile.md），由用户 confirm-author。
 2. new 创建日期加 slug 的 run；同一天同名会报冲突。
 3. Agent 保存 idea、sources、claims、brief，每步 check --artifact。
 4. 用户 approve brief，Agent 执行 style 编译默认或所选风格。

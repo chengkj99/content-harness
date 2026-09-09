@@ -1,5 +1,5 @@
 from .gates import render_article, validate_artifact
-from .profiles import profile
+from .profiles import output_path, profile
 from .storage import atomic_write, files, require, safe_path, tree_hash
 
 
@@ -37,15 +37,19 @@ def package(run, titles, summary, expected_hash):
     run.register("publish-package")
 
 
-def export(run, project, target):
+def export(run, project, target=None):
     require(run.approved("publish"), "APPROVAL_REQUIRED", "publish")
     validate_artifact(run, "publish-package")
     config = profile(project)
+    target = target or config.get("default_target", next(iter(config["exports"])))
     require(target in config["exports"], "EXPORT_UNKNOWN", target)
-    relative = config["exports"][target]["directory"].format(run_id=run.state.run_id)
-    destination = safe_path(project, relative)
-    for forbidden in [".git", ".content-harness", "wiki"]:
-        require(not destination.is_relative_to(project / forbidden), "EXPORT_FORBIDDEN", relative)
+    destination = output_path(
+        project,
+        config["exports"][target]["directory"],
+        run.state.run_id,
+        run.state.scenario or run.state.workflow,
+    )
+    relative = destination.relative_to(project.resolve()).as_posix()
     contents = run.contents("publish-package")
     current_hash = tree_hash(contents)
     key = target + ":" + relative

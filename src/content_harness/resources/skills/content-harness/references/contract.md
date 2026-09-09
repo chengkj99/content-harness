@@ -2,6 +2,14 @@
 
 CLI 不调用模型；当前 Agent 执行调研、写作与语义评审。所有生产资产均应通过 CLI 登记。
 
+## 项目与目录
+
+`configure` 不带选项只读取配置。`init . --preset wiki` 不扫描或猜测 Wiki 目录；先向用户确认素材、旧稿去重范围、交付位置，再设置 `--read-root`、`--dedupe-root`、`--output-dir`。列表选项替换原列表，不是追加。修改交付位置不会搬迁旧文件，也不自动扩大读取范围。
+
+`author_sources` 是作者资料的真实路径。内部过程固定在 `.content-harness/runs`，交付目录可自选项目内子目录，支持 `{run_id}`、`{date}`、`{slug}`、`{scenario}`；禁止绝对路径、越界与系统目录。用户指定普通目录时 CLI 自动追加 `{run_id}` 隔离每篇文章。
+
+`new --scenario <id>` 覆盖该篇风格记忆场景，默认取 `style.default_scenario`；标识使用小写英文、数字和连字符。workflow 仍是已实现的长文章流程，scenario 和导出 target 不代表已实现别的平台适配。旧任务保留原场景，旧配置不自动迁移。
+
 ## 读取状态与写入
 
 在内容项目根目录执行命令，或在命令前加 `content-harness --project <project>`。
@@ -128,6 +136,6 @@ style-feedback 在登记人工改稿前执行，比较上次 registered_hash 的
 
 package 拒绝覆盖已有目录。返工时先将旧 `artifacts/60-publish-package/` 移到 run 内唯一命名的备份目录；保留已有导出。如需更新已经导出的文章，使用新 run/新输出目录，M1 不提供覆盖发布。
 
-发布审批后执行 `export <run-id> --target wechat`。生成目录包含 article.md、titles.txt、summary.txt、sources.yaml、images.yaml 与 assets/。这是本地发布包，不是公众号发布回执。
+发布审批后执行 `export <run-id>` 使用配置默认目标，只有用户指定了其他已配置目标时才加 `--target <name>`。生成目录包含 article.md、titles.txt、summary.txt、sources.yaml、images.yaml 与 assets/。这是本地发布包，不是公众号发布回执。
 
 `archive` 将 run 移入 `.content-harness/archive/`；`restore <run-id>` 恢复目录和运行状态，保留事件历史。不要手工编辑 journal。

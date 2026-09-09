@@ -2,7 +2,7 @@ import difflib
 import uuid
 
 from .models import Feedback
-from .profiles import author_confirmed, profile
+from .profiles import author_confirmed, author_path, profile
 from .storage import (
     atomic_write,
     digest,
@@ -43,8 +43,9 @@ def compile_style(run, project, selection, intensity):
     memory_root = safe_path(project, ".content-harness/style-memory")
     with lock(memory_root):
         author = read_yaml(safe_path(memory_root, "author.yaml"))
-        scenario = read_yaml(safe_path(memory_root, f"scenarios/{run.state.workflow}.yaml"))
-        author_text = safe_path(project, ".content-harness/author-profile.md").read_text()
+        scenario_id = run.state.scenario or run.state.workflow
+        scenario = read_yaml(safe_path(memory_root, f"scenarios/{scenario_id}.yaml"))
+        author_text = author_path(project).read_text()
         memory = {"author": author, "scenario": scenario, "author_profile": author_text}
     stack["author"] = {
         "id": "project-author",
@@ -57,7 +58,7 @@ def compile_style(run, project, selection, intensity):
         "base": pack("neutral"),
         "style_stack": stack,
         "memory_snapshot": {
-            "scenario": run.state.workflow,
+            "scenario_id": scenario_id,
             "content_hash": digest(json_bytes(memory)),
             **memory,
         },
@@ -103,7 +104,7 @@ def feedback(run, project, artifact, scope, reason):
         run_id=run.state.run_id,
         artifact=artifact,
         scope=scope,
-        scenario=run.state.workflow,
+        scenario=run.state.scenario or run.state.workflow,
         reason=reason,
         before_hash=before_hash,
         after_hash=run.hash(artifact),
@@ -174,11 +175,16 @@ def promote(project, run_id, lesson_id, expected_hash):
 
 
 def save_version(root, target, data):
-    path = safe_path(root, f"versions/{target.stem}/{data['version']}.yaml")
+    path = version_path(root, target, data["version"])
     if path.exists():
         require(read_yaml(path) == data, "MEMORY_VERSION_CONFLICT", str(path))
     else:
         atomic_write(path, yaml_bytes(data))
+
+
+def version_path(root, target, version):
+    relative = target.relative_to(root).with_suffix("").as_posix()
+    return safe_path(root, f"versions/{relative}/{version}.yaml")
 
 
 def rollback(project, scope, scenario, version, expected_hash):
@@ -189,7 +195,12 @@ def rollback(project, scope, scenario, version, expected_hash):
             digest(target.read_bytes()) == expected_hash, "CONFLICT_EXTERNAL_EDIT", "style memory"
         )
         current = read_yaml(target)
-        old = read_yaml(safe_path(root, f"versions/{target.stem}/{version}.yaml"))
+        history = version_path(root, target, version)
+        # v0.1 stored scenario versions by basename. Never interpret author
+        # history as a custom scenario named "author".
+        if not history.exists() and scope == "scenario" and scenario != "author":
+            history = safe_path(root, f"versions/{target.stem}/{version}.yaml")
+        old = read_yaml(history)
         save_version(root, target, current)
         result = {
             "version": current["version"] + 1,

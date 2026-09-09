@@ -56,7 +56,7 @@ class Run:
         self.index()
 
     @classmethod
-    def create(cls, path, run_id, workflow, styles, intensity):
+    def create(cls, path, run_id, workflow, styles, intensity, scenario=None):
         require(not (path / "transitions.jsonl").exists(), "RUN_EXISTS", run_id)
         workflow_path = safe_path(path, "workflow.yaml")
         atomic_write(workflow_path, yaml_bytes(workflow))
@@ -65,6 +65,7 @@ class Run:
         self.state = Manifest(
             run_id=run_id,
             workflow=workflow["id"],
+            scenario=scenario,
             created_at=now(),
             workflow_hash=tree_hash(files(workflow_path)),
             artifacts={

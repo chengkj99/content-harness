@@ -10,25 +10,25 @@ flowchart TD
   idea --> brief
   sources --> brief
   claims --> brief
-  brief -->|人工批准| style[style-spec]
+  brief -->|人工批准| style_spec["style-spec"]
   brief --> outline
-  style --> outline
+  style_spec --> outline
   brief --> draft
   outline --> draft
   claims --> draft
-  style --> draft
+  style_spec --> draft
   draft --> manuscript
-  style --> manuscript
+  style_spec --> manuscript
   manuscript --> report[style-report]
   draft --> report
-  style --> report
+  style_spec --> report
   report --> facts[fact-review]
   report --> edit[editorial-review]
   claims --> facts
   manuscript --> facts
   manuscript --> edit
   brief --> edit
-  style --> edit
+  style_spec --> edit
   facts --> visual[visual-plan]
   edit --> visual
   manuscript --> visual
@@ -67,7 +67,11 @@ flowchart TD
 
 style 编译规则全文、版本与项目记忆快照。feedback 只建候选；用户确认的 promote/rollback 在项目锁内改变记忆并保存版本。
 
-导出限制在 profile.directory，拒绝越界、符号链接及 .git/.content-harness/wiki。目录已存在时，只接受该 run 已记录且字节一致的结果。部分导出失败保留现场，用新目录重试，不自动覆盖或删除。
+导出位置由项目 exports 配置决定，支持项目内任意普通目录，包括用户明确选择的 wiki/ 子目录。拒绝越界、符号链接及 Git、工具状态和客户端配置目录。已有目录只接受本 run 已记录且字节一致的幂等结果；部分导出失败保留现场，不自动覆盖。
+
+`configure` 统一设置资料根、查重根、规则文件、作者资料、默认目标与场景；路径支持中文和空格。输出模板支持 `{run_id}`、`{date}`、`{slug}`、`{scenario}`。运行状态仍固定在隐藏的 .content-harness 中，避免迁移状态目录导致历史任务丢失。配置更新不搬动旧稿，也不自动摄入知识库索引。
+
+场景是风格记忆的分组，与 workflow 解耦：一套长文流程可以分别积累 newsletter、product-notes 等场景的表达偏好。new 将场景固化到 run；旧 run 缺少 scenario 时继续以其 workflow 作为场景，保持兼容。
 
 ## 对早期设计的调整
 

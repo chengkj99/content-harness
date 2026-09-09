@@ -74,7 +74,7 @@ def test_feedback_promotion_and_rollback_scoped(workspace):
         project, run.state.run_id, lesson["lesson_id"], digest(candidate.read_bytes())
     )
     assert result["version"] == 1
-    assert read_yaml(root / "scenarios/technical-tutorial.yaml")["version"] == 0
+    assert not (root / "scenarios/technical-tutorial.yaml").exists()
     assert read_yaml(root / "author.yaml")["version"] == 0
     current = root / "scenarios/wechat-longform.yaml"
     restored = styles.rollback(

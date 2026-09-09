@@ -53,7 +53,7 @@ def test_high_risk_verification_bound_to_claim_hash(workspace):
 
 
 @pytest.mark.parametrize(
-    "target", ["../outside", "/tmp/outside", ".git/hooks/evil", "wiki/overwrite"]
+    "target", ["../outside", "/tmp/outside", ".git/hooks/evil", ".content-harness/overwrite"]
 )
 def test_export_path_boundary(workspace, target):
     project, run = workspace

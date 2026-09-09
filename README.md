@@ -1,148 +1,84 @@
 # Content Harness
 
-把内容创作保存成可检查、可返工、可继续的本地工作流。
+让 AI 帮你把一个想法做成有依据、可修改、能接着写的文章。
 
-Agent 负责调研、写作和评审；CLI 负责资产依赖、版本、事实台账、审批与交付。每篇文章有独立工作目录，换客户端或中断后仍能从磁盘继续。项目独立运行，不依赖其他私有 Skills 或个人 Wiki。
+你提供主题和素材，确认文章方向，审阅最终稿。AI 按步骤完成查资料、列提纲、写正文、调整表达和检查事实；Content Harness 保存这些过程，让你中途退出后能继续，也能知道改稿后哪些检查需要重做。
 
-当前版本 `0.1.0`：中文公众号长文的 M0/M1 初始实现。提供可选的“公众号高传播”“去 AI 味”风格和按场景隔离的风格反馈。只交付本地发布包，没有公众号自动发布、模型 API 或后台服务。
+**第一次使用，从 [新手上手指南](docs/getting-started.md) 开始。** 里面有安装引导、一篇文章从头到尾的示例，以及可以直接复制给 AI 的提示词。不需要先学会下面工具的命令。
 
-## 安装
+## 适合做什么
 
-需要 Python 3.11+，支持 macOS/Linux。先安装 [uv](https://docs.astral.sh/uv/)，再执行：
+目前主要服务中文长文创作，内置流程首先面向公众号文章。文章以 Markdown 文本和本地图片交付，也可以保存到个人写作文件夹或 LLM Wiki 知识库中。
+
+它适合需要核对事实、保留自己的表达、反复改稿的创作者。当前没有一键发布到各平台、短视频剪辑或自动运营功能；将导出目标命名为 blog 或 newsletter，也不会自动获得对应平台的排版和发布接口。
+
+需要一个能读写本地文件、执行命令并使用 Skills（操作指引）的 AI 客户端。你与这个 AI 对话，它负责调用 Content Harness。普通网页聊天窗口若不能操作本地文件，就不能直接运行这套流程。
+
+## 写一篇文章时，你主要做三件事
+
+1. 告诉 AI：想写什么、给谁看、有哪些资料。
+2. 确认文章方向，再让 AI 写全文。
+3. 看过成稿、标题和配图后，确认保存到你选择的位置。
+
+例如，安装完成后可以直接说：
+
+> 使用 Content Harness，帮我写一篇“为什么收藏了很多资料，做事时还是不知道下一步”的文章。读者是希望改善工作习惯的普通上班族。先整理材料、明确核心观点和写作边界，等我确认方向后再写全文。不要虚构个人经历或效果数据。
+
+[完整提示词示例](docs/getting-started.md#从一个想法到一篇文章)会继续说明如何选风格、提出修改、从中断处继续和保存成品。
+
+## 风格由你决定
+
+默认清晰、自然地表达，不自动添加营销语气。你可以按文章选择：
+
+- **公众号高传播表达**：优化标题、开头和段落节奏，不承诺文章一定成为“爆款”。
+- **去 AI 味**：清理空泛套话、机械总结和模板化过渡，同时保留事实、引用和你的表达习惯。
+- **作者及场景偏好**：例如读书笔记、产品解读、个人随笔分别积累经验；一次改稿先形成候选规则，经你确认后才用于以后的文章。
+
+## 文章保存在哪里
+
+你可以直接告诉 AI：
+
+> 从“素材/读书笔记”读取材料，把成品放到“知识库/我的文章”。每篇文章单独一个文件夹，已有文件保留。
+
+普通文件夹、Git 仓库、LLM Wiki 都可以作为写作项目。资料目录、旧稿查重目录、作者资料文件、成品目录和风格场景均可设置；不要求使用某个人的知识库目录结构。
+
+成品示意：
+
+```text
+知识库/我的文章/这篇文章的编号/
+├── article.md     正文，用文本编辑器或 Markdown 阅读器打开
+├── titles.txt     候选标题
+├── summary.txt    摘要
+├── sources.yaml   来源记录
+├── images.yaml    图片说明
+└── assets/        配图（需要图片时才有）
+```
+
+写作过程另外保存在项目的隐藏文件夹 .content-harness 中。你通常只需看成品；AI 负责管理过程。[目录与 LLM Wiki 设置](docs/wiki-integration.md)说明如何更换位置以及如何保留旧稿。
+
+## 怎么安装
+
+目前支持 macOS / Linux，需要 Python 3.11+。最省事的方式是按 [上手指南](docs/getting-started.md#第一次准备)让你的 AI 客户端检查环境并帮助安装。工具本身不包含模型服务；使用 AI 客户端可能需要它自己的账号或额度。
+
+已熟悉命令行的用户可从 GitHub 安装：
 
 ```bash
 uv tool install 'git+https://github.com/chengkj99/content-harness.git'
-content-harness version
 ```
 
-尚未发布到 PyPI，不要直接执行 `uv tool install content-harness`。
+尚未发布到 PyPI。已安装旧版本时，更新方式与旧项目处理见 [升级说明](docs/commands.md#升级工具与已有项目)。
 
-## 第一次写文章
+## 阅读导航
 
-在你保存文章的项目目录执行：
+| 你想做什么 | 看这里 |
+|---|---|
+| 不懂命令，想完成第一篇文章 | [新手上手指南与提示词](docs/getting-started.md) |
+| 设置资料、成品目录，接入 LLM Wiki | [目录与知识库设置](docs/wiki-integration.md) |
+| 理解 status、resume 等命令 | [命令白话手册](docs/commands.md) |
+| 排查返工、冲突与恢复问题 | [操作与排错](docs/usage.md) |
+| 修改工具代码、跑测试、构建安装包 | [开发者说明](docs/development.md) |
+| 了解资产之间的依赖与边界 | [架构说明](docs/architecture.md) |
 
-```bash
-content-harness init .
-content-harness install-skills --client codex
-```
+当前提供独立 CLI、13 个 Skills、3 套风格以及本地文章交付流程。自动化机制与安装验证记录见 [验证报告](docs/validation.md)；这些检查不等于真实文章质量、模型行为或跨客户端体验已经验证。事实与语义仍需审阅，正式平台发布需另行操作。
 
-编辑 `.content-harness/author-profile.md`，填写真实的读者、表达习惯与经历边界，再由你在终端确认：
-
-```bash
-content-harness confirm-author
-content-harness doctor
-```
-
-默认安装到项目级 `.agents/skills/`；Claude Code 使用 `--client claude`，Cursor 使用 `--client cursor`。安装后重新载入客户端。这三种安装目录已做自动化检查，真实客户端行为兼容仍待验证。
-
-在 Agent 客户端里说：
-
-> 使用 Content Harness，把“为什么资料收藏了很多，动手时还是没有下一步”做成公众号文章。先整理证据、明确读者与核心判断，完成简报后等我确认。
-
-Agent 会创建 run、保存来源与主张台账、生成简报，并给出审批命令。你读过简报后执行：
-
-```bash
-content-harness approve <run-id> brief
-```
-
-按提示输入完整哈希，再告诉 Agent 继续。默认不强制高传播或口语化。若需要，可以说：
-
-> 这篇使用公众号高传播风格，中等强度，最后去 AI 味。保留数字、引用、限定词和我的真实经历。
-
-对应命令：
-
-```bash
-content-harness style <run-id> \
-  --use wechat-high-engagement \
-  --use natural-human-zh \
-  --intensity medium
-```
-
-Agent 完成提纲、正文、润色、两类评审、必要配图与发布包后，你确认最终内容并导出：
-
-```bash
-content-harness approve <run-id> publish
-content-harness export <run-id> --target wechat
-```
-
-这一步只导出本地文件，不会发送到公众号。
-
-## 最后得到什么
-
-```text
-你的内容项目/
-├── .content-harness/
-│   ├── project.yaml
-│   ├── author-profile.md
-│   ├── style-memory/          # 作者/场景偏好、候选、历史版本
-│   └── runs/<run-id>/
-│       ├── workflow.yaml     # 固化本次 DAG
-│       ├── manifest.yaml     # 当前状态
-│       ├── transitions.jsonl # 可重放事件
-│       ├── approvals.jsonl
-│       ├── snapshots/        # 已登记内容快照
-│       └── artifacts/        # 想法、来源、提纲、正文、评审、图片、发布包
-└── content/<run-id>/
-    ├── article.md
-    ├── titles.txt
-    ├── summary.txt
-    ├── sources.yaml
-    ├── images.yaml
-    └── assets/               # 有图时存在
-```
-
-先看 [演示文章](examples/article.md) 和 [逐步指南](docs/usage.md)。演示文本不是已发布文章或效果实验。
-
-## 返工与风格积累
-
-手改正文后执行 status，下游会被标为 stale。Agent 重新处理受影响资产，保留仍有效的调研和简报。
-
-```bash
-content-harness status <run-id> --json
-content-harness resume <run-id> --json
-content-harness style <run-id> --reset
-```
-
-人工改稿后，在登记新稿之前记录反馈：
-
-```bash
-content-harness style-feedback <run-id> \
-  --artifact manuscript --scope scenario --reason '结尾要给出具体动作'
-```
-
-让 Agent 根据差异填写候选规则及评估样例。确认值得长期使用后，你执行 `style-promote <run-id> <lesson-id>`。作者与不同场景分别保存版本，可用 style-rollback 恢复旧规则；新记忆不会改变历史文章。
-
-## 在 kj-llm-wiki 使用
-
-在该 Wiki 根目录执行：
-
-```bash
-content-harness init . --preset wiki
-content-harness install-skills --client codex
-```
-
-过程文件在 `.content-harness/runs/`，成品输出到 `raw/studio/funnel/formatted/wechat/<run-id>/`。初始化不移动旧内容、不写正式 wiki 页面。接入前读取项目自己的 AGENTS.md、SCHEMA.md 并核对配置，见 [Wiki 接入](docs/wiki-integration.md)。
-
-## 验证与限制
-
-- 自动化验证覆盖 DAG 失效、手改保护、审批失效、日志恢复、并发锁、导出冲突、风格事实差异、场景记忆及 CLI 安装。
-- 三套风格与 13 个独立 Skills 随 Python 安装包携带。
-- 字符串门禁只能发现部分事实错误；主张是否成立、表达是否改变含义仍需语义评审及必要人工核验。不承诺任意改写的语义保真或“爆款”。
-- 本地 TTY 审批是流程控制，不是身份认证，不能对抗与用户共享文件和命令权限的恶意 Agent。
-- 未完成真实模型行为评估、三客户端完整试用、10 篇真实文章试用或传播效果验证。见 [验证报告](docs/validation.md)。
-
-## 开发
-
-```bash
-git clone https://github.com/chengkj99/content-harness.git
-cd content-harness
-uv sync --extra dev
-uv run pytest
-uv run ruff check .
-uv run python scripts/export_schemas.py --check
-uv build
-```
-
-源码在 src/content_harness/，资源在其 resources/ 中，随 wheel 分发。JSON Schema 在 schemas/，由 Pydantic 模型生成。详见 [架构说明](docs/architecture.md)。
-
-许可证沿用仓库原有的 [Apache-2.0](LICENSE)。
+许可证：[Apache-2.0](LICENSE)。

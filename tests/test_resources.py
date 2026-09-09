@@ -16,6 +16,16 @@ def test_all_skill_links_resolve():
                 assert (path.parent / target).resolve().is_file(), (path, target)
 
 
+def test_public_document_links_resolve():
+    root = Path(__file__).resolve().parents[1]
+    for path in [root / "README.md", *sorted((root / "docs").glob("*.md"))]:
+        for target in re.findall(r"\[[^\]]*\]\(([^)]+)\)", path.read_text()):
+            if target.startswith(("http:", "https:", "#")):
+                continue
+            target = target.split("#", 1)[0]
+            assert (path.parent / target).resolve().is_file(), (path, target)
+
+
 def test_skill_contracts_do_not_depend_on_private_skills():
     root = workflows.resources()
     for path in root.rglob("*"):

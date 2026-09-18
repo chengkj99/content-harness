@@ -28,6 +28,8 @@ AI 可以代为执行 init 或 configure。项目已有 AGENTS.md、SCHEMA.md �
 | 成品保存到哪里 | exports | 一个或多个命名目标，每个目标一个目录模板 |
 | 默认用哪个目标 | default_target | 不指定目标时使用它 |
 | 哪类文章积累同一套偏好 | style.default_scenario | 新文章采用的默认风格场景 |
+| 哪些样稿定义表达好坏 | style.reference_files | 项目内正反样稿及说明，不作为新文章事实 |
+| 每个场景默认用什么风格 | style.scenarios | 为个人随笔、教程等分别设置 Scene/Polish |
 
 这些设置约束 Content Harness 及其 Skills 的约定行为，不是对宿主 AI 的文件系统权限隔离。工具自身导出会检查实际路径和冲突。
 
@@ -83,6 +85,12 @@ style:
   default_scene: null
   default_polish: []
   allow_run_override: true
+  reference_files: []
+  scenarios:
+    personal-essay:
+      scene: personal-narrative-zh
+      polish:
+        - natural-human-zh
 ```
 
 这是用于解释的片段，不要用它覆盖整个 project.yaml。建议让 AI 通过 configure 更新需要的字段，保留其他设置。
@@ -112,6 +120,8 @@ content-harness export <run-id> --target blog
 library、blog 只是目标的短名称，不代表已经连接某个平台。输出仍然是 article.md、标题、摘要、来源记录和必要图片组成的文件夹。
 
 场景是风格偏好的分组，与成品目标分开。可以让 AI 建立 newsletter、product-notes 等场景；同一长文流程可以分别积累偏好。新文章可以使用 new --scenario 覆盖项目默认值；项目默认场景改变后，已有文章仍保留创建时的场景。自定义场景不会增加新的平台适配流程。
+
+场景还可以绑定默认风格栈。个人随笔适合 personal-narrative-zh，教程可按需使用 wechat-high-engagement，两者都可叠加 natural-human-zh。reference_files 使用项目内显式文件；Content Harness 会把内容和哈希固化到 voice-contract，参考文件变化后提示重做，不会把样稿事实登记成 Claims。
 
 ## 已有文件和旧版本怎么办
 

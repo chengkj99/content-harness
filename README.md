@@ -79,6 +79,6 @@ uv tool install 'git+https://github.com/chengkj99/content-harness.git'
 | 修改工具代码、跑测试、构建安装包 | [开发者说明](docs/development.md) |
 | 了解资产之间的依赖与边界 | [架构说明](docs/architecture.md) |
 
-当前提供独立 CLI、13 个 Skills、3 套风格以及本地文章交付流程。自动化机制与安装验证记录见 [验证报告](docs/validation.md)；这些检查不等于真实文章质量、模型行为或跨客户端体验已经验证。事实与语义仍需审阅，正式平台发布需另行操作。
+当前提供独立 CLI、13 个 Skills、4 套风格以及本地文章交付流程。新任务会在选题卡前固化作者声音契约，并在成稿后独立检查作者特异性。自动化机制与安装验证记录见 [验证报告](docs/validation.md)；这些检查不等于真实文章质量、模型行为或跨客户端体验已经验证。事实与语义仍需审阅，正式平台发布需另行操作。
 
 许可证：[Apache-2.0](LICENSE)。

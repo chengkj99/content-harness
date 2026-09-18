@@ -3,7 +3,10 @@
 import json
 import subprocess
 import tempfile
+from importlib.resources import files
 from pathlib import Path
+
+from content_harness import workflows
 
 
 def main():
@@ -54,6 +57,17 @@ def main():
         assert config["read_roots"] == ["原始资料"]
         skills = list((root / "skills").glob("*/SKILL.md"))
         assert len(skills) == 13
+        style_root = files("content_harness").joinpath("resources/styles")
+        styles = sorted(path.name for path in style_root.iterdir() if path.is_dir())
+        assert styles == [
+            "natural-human-zh",
+            "neutral",
+            "personal-narrative-zh",
+            "wechat-high-engagement",
+        ]
+        order = workflows.validate(workflows.load("wechat-longform"))
+        assert order.index("voice-contract") < order.index("brief")
+        assert order.index("voice-review") < order.index("publish-package")
         # The new run gate must remain closed on a fresh installed project.
         result = subprocess.run(
             ["content-harness", "--project", str(root), "new", "demo"],
@@ -63,7 +77,8 @@ def main():
         )
         assert result.returncode == 1 and "AUTHOR_CONFIRMATION_REQUIRED" in result.stdout
         print(
-            "Installed-wheel smoke: 13 skills, workflow, custom paths/scenario, doctor and author gate passed"
+            "Installed-wheel smoke: 13 skills, 4 styles, voice gates, custom paths/scenario, "
+            "doctor and author gate passed"
         )
 
 

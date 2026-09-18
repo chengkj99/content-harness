@@ -4,6 +4,7 @@ import pytest
 from conftest import approve_fixture, build_package, build_to_manuscript, write
 
 from content_harness import exporting, workflows
+from content_harness.gates import claim_hash, ledger
 from content_harness.state import Run
 from content_harness.storage import HarnessError, atomic_write, lock, yaml_bytes
 
@@ -153,3 +154,50 @@ def test_every_event_contains_versioned_state(workspace):
     write(run, "idea", "test")
     rows = [json.loads(line) for line in (run.path / "transitions.jsonl").read_text().splitlines()]
     assert [r["state"]["revision"] for r in rows] == list(range(1, len(rows) + 1))
+
+
+def test_status_lists_all_pending_claim_verifications(workspace):
+    _, run = workspace
+    write(run, "idea", "# Idea")
+    write(
+        run,
+        "sources",
+        {
+            "sources": [
+                {
+                    "source_id": "s1",
+                    "title": "Synthetic author statement",
+                    "url": "https://example.com/source",
+                    "accessed_at": "2026-09-18",
+                    "excerpt": "The author described two experiences.",
+                }
+            ]
+        },
+    )
+    atomic_write(
+        run.artifact_path("claims"),
+        yaml_bytes(
+            {
+                "claims": [
+                    {
+                        "claim_id": claim_id,
+                        "text": f"Synthetic experience {claim_id}",
+                        "type": "experience",
+                        "risk": "medium",
+                        "status": "author-confirmed",
+                        "provenance": "Synthetic test fixture",
+                    }
+                    for claim_id in ["experience-one", "experience-two"]
+                ]
+            }
+        ),
+    )
+    run.scan()
+    report = run.report()
+    assert report["human_gates"][0]["claim_ids"] == [
+        "experience-one",
+        "experience-two",
+    ]
+    claim = ledger(run).claims[0]
+    run.state.claim_verifications[claim.claim_id] = claim_hash(claim, run.hash("sources"))
+    assert run.report()["human_gates"][0]["claim_ids"] == ["experience-two"]

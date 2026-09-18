@@ -1,0 +1,150 @@
+{
+  "$defs": {
+    "StyleReference": {
+      "additionalProperties": false,
+      "properties": {
+        "reference_id": {
+          "title": "Reference Id",
+          "type": "string"
+        },
+        "role": {
+          "enum": [
+            "positive",
+            "negative"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "source": {
+          "minLength": 1,
+          "title": "Source",
+          "type": "string"
+        },
+        "dimensions": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Dimensions",
+          "type": "array"
+        },
+        "excerpt": {
+          "minLength": 1,
+          "title": "Excerpt",
+          "type": "string"
+        },
+        "reason": {
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "reference_id",
+        "role",
+        "source",
+        "excerpt",
+        "reason"
+      ],
+      "title": "StyleReference",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "scenario_id": {
+      "title": "Scenario Id",
+      "type": "string"
+    },
+    "source_hash": {
+      "title": "Source Hash",
+      "type": "string"
+    },
+    "selected_styles": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Selected Styles",
+      "type": "array"
+    },
+    "style_intensity": {
+      "default": "medium",
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "title": "Style Intensity",
+      "type": "string"
+    },
+    "author_profile": {
+      "minLength": 1,
+      "title": "Author Profile",
+      "type": "string"
+    },
+    "author_memory": {
+      "additionalProperties": true,
+      "title": "Author Memory",
+      "type": "object"
+    },
+    "scenario_memory": {
+      "additionalProperties": true,
+      "title": "Scenario Memory",
+      "type": "object"
+    },
+    "scenario_preset": {
+      "additionalProperties": true,
+      "title": "Scenario Preset",
+      "type": "object"
+    },
+    "style_packs": {
+      "items": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "title": "Style Packs",
+      "type": "array"
+    },
+    "references": {
+      "items": {
+        "$ref": "#/$defs/StyleReference"
+      },
+      "title": "References",
+      "type": "array"
+    },
+    "required_dimensions": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Required Dimensions",
+      "type": "array"
+    },
+    "dimension_guidance": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Dimension Guidance",
+      "type": "object"
+    },
+    "requires_signature": {
+      "default": false,
+      "title": "Requires Signature",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "scenario_id",
+    "source_hash",
+    "author_profile",
+    "author_memory",
+    "scenario_memory",
+    "scenario_preset"
+  ],
+  "title": "VoiceContract",
+  "type": "object"
+}

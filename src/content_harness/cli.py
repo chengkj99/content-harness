@@ -14,7 +14,13 @@ import yaml
 from pydantic import ValidationError
 
 from . import __version__, exporting, profiles, styles, workflows
-from .gates import claim_hash, ledger, validate_artifact
+from .gates import (
+    claim_batch_hash,
+    claim_hash,
+    claim_verification_items,
+    ledger,
+    validate_artifact,
+)
 from .models import Approval, Feedback
 from .state import Run
 from .storage import (
@@ -93,6 +99,7 @@ def session(run_id, scan=True):
         require(not run.state.archived, "RUN_ARCHIVED", run_id)
         if scan:
             run.scan()
+            styles.scan_voice_contract(run, root)
         yield run, root
 
 
@@ -160,8 +167,12 @@ def configure(
     policy_file: Annotated[list[str] | None, typer.Option()] = None,
     author_file: str | None = None,
     scenario: str | None = None,
+    style_reference: Annotated[list[str] | None, typer.Option()] = None,
+    scene_style: str | None = None,
+    polish_style: Annotated[list[str] | None, typer.Option()] = None,
     clear_read_roots: bool = False,
     clear_dedupe_roots: bool = False,
+    clear_style_references: bool = False,
 ):
     """查看或调整项目设置；更新目录不移动旧稿，也不改已有文章的场景。"""
     require(
@@ -172,6 +183,14 @@ def configure(
         "INVALID_ARGUMENT",
         "dedupe-root or clear-dedupe-roots",
     )
+    require(
+        not (style_reference and clear_style_references),
+        "INVALID_ARGUMENT",
+        "style-reference or clear-style-references",
+    )
+    for style_id in [scene_style, *(polish_style or [])]:
+        if style_id:
+            styles.pack(style_id)
     options = dict(
         output_dir=output_dir,
         target=target,
@@ -180,6 +199,9 @@ def configure(
         policy_files=policy_file,
         author_file=author_file,
         scenario=scenario,
+        reference_files=[] if clear_style_references else style_reference,
+        scene_style=scene_style,
+        polish_styles=polish_style,
     )
     root = project()
     value = (
@@ -230,10 +252,10 @@ def new(
     identifier(scenario)
     require(profiles.author_confirmed(root), "AUTHOR_CONFIRMATION_REQUIRED", "confirm-author")
     require(style_intensity in {"low", "medium", "high"}, "INVALID_INTENSITY", style_intensity)
-    selection = (
-        style
-        or ([config["style"]["default_scene"]] if config["style"].get("default_scene") else [])
-    ) + (polish or config["style"].get("default_polish", []))
+    preset = profiles.scenario_preset(config, scenario)
+    selection = (style or ([preset["scene"]] if preset.get("scene") else [])) + (
+        polish or preset.get("polish", [])
+    )
     for item in selection:
         styles.pack(item)
     flow = workflows.load(workflow)
@@ -396,6 +418,34 @@ def verify_claim(run_id: str, claim_id: str):
 
 
 @command()
+def verify_claims(run_id: str):
+    """由用户一次核验当前全部待确认亲历与高风险事实。"""
+    with session(run_id) as (run, _):
+        items = claim_verification_items(run, pending_only=True)
+        require(bool(items), "NO_CLAIMS_TO_VERIFY", run_id)
+        value = claim_batch_hash(items)
+        human_confirm(json.dumps({"claims": items}, ensure_ascii=False, indent=2), value)
+        current = claim_verification_items(run, pending_only=True)
+        require(
+            [item["claim_id"] for item in current] == [item["claim_id"] for item in items]
+            and claim_batch_hash(current) == value,
+            "CONFLICT_EXTERNAL_EDIT",
+            "claims",
+        )
+        run.state.claim_verifications.update(
+            {item["claim_id"]: item["content_hash"] for item in current}
+        )
+        run.save("verify-claims")
+        emit(
+            {
+                "claim_ids": [item["claim_id"] for item in current],
+                "content_hash": value,
+                "revision": run.state.revision,
+            }
+        )
+
+
+@command()
 def invalidate(run_id: str, artifact: str, reason: Annotated[str, typer.Option()]):
     """将目标及下游设为 stale，保留所有文件。"""
     with session(run_id) as (run, _):
@@ -406,6 +456,41 @@ def invalidate(run_id: str, artifact: str, reason: Annotated[str, typer.Option()
         affected = run.invalidate_descendants({artifact})
         run.save("invalidate:" + artifact)
         emit({"affected": sorted(affected), "revision": run.state.revision})
+
+
+@command()
+def voice(
+    run_id: str,
+    use: Annotated[list[str] | None, typer.Option()] = None,
+    intensity: str | None = None,
+    reset: bool = False,
+):
+    """编译作者、场景与正反样稿约束，供 Brief 及后续写作使用。"""
+    require(not (reset and use), "INVALID_ARGUMENT", "reset or use")
+    with session(run_id) as (run, root):
+        selection = [] if reset else (use if use is not None else run.state.style_selection)
+        selected_intensity = intensity or run.state.style_intensity
+        require(
+            selected_intensity in {"low", "medium", "high"},
+            "INVALID_INTENSITY",
+            selected_intensity,
+        )
+        config = profiles.profile(root)
+        require(
+            config["style"].get("allow_run_override", True)
+            or (selection == run.state.style_selection and selected_intensity == run.state.style_intensity),
+            "STYLE_OVERRIDE_DISABLED",
+            "project profile",
+        )
+        selection = list(dict.fromkeys(selection))
+        for style_id in selection:
+            styles.pack(style_id)
+        if selection != run.state.style_selection or selected_intensity != run.state.style_intensity:
+            run.state.style_selection = selection
+            run.state.style_intensity = selected_intensity
+            run.save("voice-selection")
+        result = styles.compile_voice_contract(run, root)
+        emit({"voice_contract": result, "revision": run.state.revision})
 
 
 @command()
@@ -435,6 +520,33 @@ def style_feedback(
         emit(
             {
                 "lesson": styles.feedback(run, root, artifact, scope, reason),
+                "revision": run.state.revision,
+            }
+        )
+
+
+@command()
+def style_note(
+    run_id: str,
+    reason: Annotated[str, typer.Option()],
+    artifact: str = "manuscript",
+    scope: str = "run",
+    reference_path: str | None = None,
+    reference_excerpt: str | None = None,
+):
+    """记录拒稿或对标反馈，无需先由用户手工改稿。"""
+    with session(run_id) as (run, root):
+        emit(
+            {
+                "lesson": styles.note_feedback(
+                    run,
+                    root,
+                    artifact,
+                    scope,
+                    reason,
+                    reference_path=reference_path,
+                    reference_excerpt=reference_excerpt,
+                ),
                 "revision": run.state.revision,
             }
         )

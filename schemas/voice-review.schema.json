@@ -1,0 +1,190 @@
+{
+  "$defs": {
+    "Finding": {
+      "additionalProperties": false,
+      "properties": {
+        "location": {
+          "title": "Location",
+          "type": "string"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        },
+        "fix": {
+          "title": "Fix",
+          "type": "string"
+        },
+        "severity": {
+          "enum": [
+            "warning",
+            "blocker"
+          ],
+          "title": "Severity",
+          "type": "string"
+        }
+      },
+      "required": [
+        "location",
+        "reason",
+        "fix",
+        "severity"
+      ],
+      "title": "Finding",
+      "type": "object"
+    },
+    "GenericityTest": {
+      "additionalProperties": false,
+      "properties": {
+        "result": {
+          "enum": [
+            "pass",
+            "fail"
+          ],
+          "title": "Result",
+          "type": "string"
+        },
+        "reason": {
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "result",
+        "reason"
+      ],
+      "title": "GenericityTest",
+      "type": "object"
+    },
+    "VoiceAssessment": {
+      "additionalProperties": false,
+      "properties": {
+        "dimension": {
+          "minLength": 1,
+          "title": "Dimension",
+          "type": "string"
+        },
+        "score": {
+          "maximum": 5,
+          "minimum": 1,
+          "title": "Score",
+          "type": "integer"
+        },
+        "location": {
+          "minLength": 1,
+          "title": "Location",
+          "type": "string"
+        },
+        "evidence": {
+          "minLength": 1,
+          "title": "Evidence",
+          "type": "string"
+        },
+        "reason": {
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        },
+        "fix": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fix"
+        }
+      },
+      "required": [
+        "dimension",
+        "score",
+        "location",
+        "evidence",
+        "reason"
+      ],
+      "title": "VoiceAssessment",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "input_hashes": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Input Hashes",
+      "type": "object"
+    },
+    "verdict": {
+      "enum": [
+        "pass",
+        "warn",
+        "fail"
+      ],
+      "title": "Verdict",
+      "type": "string"
+    },
+    "summary": {
+      "minLength": 1,
+      "title": "Summary",
+      "type": "string"
+    },
+    "fidelity": {
+      "enum": [
+        "pass",
+        "fail"
+      ],
+      "title": "Fidelity",
+      "type": "string"
+    },
+    "assessments": {
+      "items": {
+        "$ref": "#/$defs/VoiceAssessment"
+      },
+      "title": "Assessments",
+      "type": "array"
+    },
+    "signature_passage": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Signature Passage"
+    },
+    "genericity_test": {
+      "$ref": "#/$defs/GenericityTest"
+    },
+    "findings": {
+      "items": {
+        "$ref": "#/$defs/Finding"
+      },
+      "title": "Findings",
+      "type": "array"
+    }
+  },
+  "required": [
+    "input_hashes",
+    "verdict",
+    "summary",
+    "fidelity",
+    "assessments",
+    "genericity_test"
+  ],
+  "title": "VoiceReview",
+  "type": "object"
+}

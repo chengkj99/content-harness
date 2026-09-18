@@ -6,7 +6,16 @@ from xml.etree import ElementTree
 
 import yaml
 
-from .models import Claims, Review, Sources, StyleReport, StyleSpec, Visuals
+from .models import (
+    Claims,
+    Review,
+    Sources,
+    StyleReport,
+    StyleSpec,
+    Visuals,
+    VoiceContract,
+    VoiceReview,
+)
 from .storage import HarnessError, digest, files, json_bytes, require, safe_path
 
 
@@ -82,6 +91,29 @@ def claim_hash(claim, sources_hash=None):
     return digest(json_bytes({"claim": claim.model_dump(), "sources_hash": sources_hash}))
 
 
+def claim_verification_items(run, pending_only=False):
+    sources_hash = run.hash("sources")
+    items = []
+    for claim in ledger(run).claims:
+        if claim.risk != "high" and claim.type != "experience":
+            continue
+        content_hash = claim_hash(claim, sources_hash)
+        if pending_only and run.state.claim_verifications.get(claim.claim_id) == content_hash:
+            continue
+        items.append(
+            {
+                "claim_id": claim.claim_id,
+                "text": claim.text,
+                "content_hash": content_hash,
+            }
+        )
+    return items
+
+
+def claim_batch_hash(items):
+    return digest(json_bytes({"claims": items}))
+
+
 def fidelity(run):
     draft = run.artifact_path("draft").read_text()
     manuscript = run.artifact_path("manuscript").read_text()
@@ -116,6 +148,64 @@ def review_pass(review):
         "REVIEW_BLOCKED",
         review.summary,
     )
+
+
+def required_style_ids(spec):
+    return {
+        item["id"]
+        for layer in ("scene", "polish")
+        for item in spec.style_stack.get(layer, [])
+    }
+
+
+def validate_style_report(run, report):
+    selected = required_style_ids(StyleSpec.model_validate(payload(run.artifact_path("style-spec"))))
+    assessment_ids = [item.style_id for item in report.rule_assessments]
+    assessed = set(assessment_ids)
+    require(
+        len(assessment_ids) == len(assessed),
+        "STYLE_RULE_COVERAGE",
+        "Each selected style must be assessed exactly once",
+    )
+    require(selected == assessed, "STYLE_RULE_COVERAGE", f"missing={selected - assessed}")
+    for item in report.rule_assessments:
+        require(
+            bool(item.evidence.strip()),
+            "STYLE_RULE_EVIDENCE_MISSING",
+            item.style_id,
+        )
+
+
+def validate_voice_review(run, review):
+    review_pass(review)
+    contract = VoiceContract.model_validate(payload(run.artifact_path("voice-contract")))
+    spec = StyleSpec.model_validate(payload(run.artifact_path("style-spec")))
+    configured_styles = [
+        item
+        for layer in ("scene", "polish")
+        for item in spec.style_stack.get(layer, [])
+    ]
+    required = set(contract.required_dimensions)
+    for item in configured_styles:
+        required.update(item.get("dimensions", []))
+    dimensions = [item.dimension for item in review.assessments]
+    require(
+        len(dimensions) == len(set(dimensions)) and set(dimensions) == required,
+        "VOICE_REVIEW_COVERAGE",
+        f"missing={required - set(dimensions)}, unknown={set(dimensions) - required}",
+    )
+    for assessment in review.assessments:
+        require(assessment.score >= 3, "VOICE_REVIEW_LOW_SCORE", assessment.dimension)
+    require(review.genericity_test.result == "pass", "VOICE_REVIEW_GENERIC", review.genericity_test.reason)
+    requires_signature = contract.requires_signature or any(
+        bool(item.get("requires_signature", False)) for item in configured_styles
+    )
+    if requires_signature:
+        require(
+            bool(review.signature_passage and review.signature_passage.strip()),
+            "VOICE_SIGNATURE_MISSING",
+            "Personal narrative requires an author-specific passage",
+        )
 
 
 def validate_claims(run):
@@ -219,6 +309,14 @@ def validate_artifact(run, name):
         data = payload(path)
         for field in ["audience", "question", "thesis", "boundaries", "action", "dedupe"]:
             require(bool(data.get(field)), "BRIEF_FIELD_MISSING", field)
+    elif kind == "voice-contract":
+        VoiceContract.model_validate(payload(path))
+        expected = safe_path(run.path, "voice-compiled.yaml")
+        require(
+            expected.exists() and expected.read_bytes() == path.read_bytes(),
+            "VOICE_CONTRACT_CHANGED",
+            "Run voice again",
+        )
     elif kind == "style":
         StyleSpec.model_validate(payload(path))
         # CLI compilation is pinned in its own snapshot; manual edits require recompile.
@@ -238,6 +336,12 @@ def validate_artifact(run, name):
         report = StyleReport.model_validate(payload(path))
         validate_review_inputs(run, name, report.input_hashes)
         require(report.fidelity == "pass", "STYLE_FACT_DRIFT", report.reason)
+        validate_style_report(run, report)
+        fidelity(run)
+    elif kind == "voice-review":
+        review = VoiceReview.model_validate(payload(path))
+        validate_review_inputs(run, name, review.input_hashes)
+        validate_voice_review(run, review)
         fidelity(run)
     elif kind in {"fact-review", "review"}:
         review = Review.model_validate(payload(path))

@@ -16,6 +16,8 @@ from content_harness.models import (
     StyleReport,
     StyleSpec,
     Visuals,
+    VoiceContract,
+    VoiceReview,
 )
 
 MODELS = {
@@ -29,6 +31,8 @@ MODELS = {
     "style-feedback": Feedback,
     "review": Review,
     "style-report": StyleReport,
+    "voice-contract": VoiceContract,
+    "voice-review": VoiceReview,
     "visuals": Visuals,
 }
 

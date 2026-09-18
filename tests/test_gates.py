@@ -1,5 +1,11 @@
 import pytest
-from conftest import approve_fixture, build_package, build_to_brief, build_to_manuscript
+from conftest import (
+    approve_fixture,
+    build_package,
+    build_reviews,
+    build_to_brief,
+    build_to_manuscript,
+)
 
 from content_harness import exporting
 from content_harness.gates import claim_hash, ledger, validate_artifact
@@ -18,6 +24,66 @@ def test_style_drift_blocked(workspace, before, after):
     run.scan()
     with pytest.raises(HarnessError):
         run.register("manuscript")
+
+
+def test_style_report_requires_evidence_for_every_selected_style(workspace):
+    project, run = workspace
+    build_to_manuscript(run, project, ["natural-human-zh"])
+    data = {
+        "input_hashes": {
+            dep: run.state.artifacts[dep].content_hash
+            for dep in run.workflow["artifacts"]["style-report"]["depends_on"]
+        },
+        "changes": [],
+        "rejected": [],
+        "fidelity": "pass",
+        "reason": "No-op without evidence",
+        "rule_assessments": [],
+    }
+    atomic_write(run.artifact_path("style-report"), yaml_bytes(data))
+    run.scan()
+    with pytest.raises(HarnessError) as error:
+        run.register("style-report")
+    assert error.value.code == "STYLE_RULE_COVERAGE"
+
+
+def test_style_report_rejects_duplicate_assessments(workspace):
+    project, run = workspace
+    build_to_manuscript(run, project, ["natural-human-zh"])
+    assessment = {
+        "style_id": "natural-human-zh",
+        "status": "already-satisfied",
+        "evidence": "Synthetic fixture body",
+    }
+    data = {
+        "input_hashes": {
+            dep: run.state.artifacts[dep].content_hash
+            for dep in run.workflow["artifacts"]["style-report"]["depends_on"]
+        },
+        "changes": [],
+        "rejected": [],
+        "fidelity": "pass",
+        "reason": "Duplicated coverage",
+        "rule_assessments": [assessment, assessment],
+    }
+    atomic_write(run.artifact_path("style-report"), yaml_bytes(data))
+    run.scan()
+    with pytest.raises(HarnessError) as error:
+        run.register("style-report")
+    assert error.value.code == "STYLE_RULE_COVERAGE"
+
+
+def test_personal_narrative_voice_review_requires_signature(workspace):
+    project, run = workspace
+    build_to_manuscript(run, project, ["personal-narrative-zh"])
+    build_reviews(run)
+    data = read_yaml(run.artifact_path("voice-review"))
+    data["signature_passage"] = None
+    atomic_write(run.artifact_path("voice-review"), yaml_bytes(data))
+    run.scan()
+    with pytest.raises(HarnessError) as error:
+        run.register("voice-review")
+    assert error.value.code == "VOICE_SIGNATURE_MISSING"
 
 
 def test_unsupported_factual_claim_blocks(workspace):

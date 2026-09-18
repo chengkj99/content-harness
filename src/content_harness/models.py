@@ -83,6 +83,8 @@ class Claim(Strict):
     provenance: str | None = None
     boundary: str | None = None
     protected_terms: list[str] = Field(default_factory=list)
+    narrative_role: Literal["scene", "conflict", "turn", "reflection", "context"] | None = None
+    sensitivity: Literal["normal", "private", "sensitive"] = "normal"
 
 
 class Claims(Strict):
@@ -121,6 +123,39 @@ class StyleSpec(Strict):
     intensity: Literal["low", "medium", "high"]
     apply_to: dict
     protected: list[str]
+    voice_contract_hash: str | None = None
+
+
+class StyleReference(Strict):
+    reference_id: str
+    role: Literal["positive", "negative"]
+    source: str = Field(min_length=1)
+    dimensions: list[str] = Field(default_factory=list)
+    excerpt: str = Field(min_length=1)
+    reason: str = Field(min_length=1)
+
+
+class VoiceContract(Strict):
+    schema_version: Literal[1] = 1
+    scenario_id: str
+    source_hash: str
+    selected_styles: list[str] = Field(default_factory=list)
+    style_intensity: Literal["low", "medium", "high"] = "medium"
+    author_profile: str = Field(min_length=1)
+    author_memory: dict
+    scenario_memory: dict
+    scenario_preset: dict
+    style_packs: list[dict] = Field(default_factory=list)
+    references: list[StyleReference] = Field(default_factory=list)
+    required_dimensions: list[str] = Field(default_factory=list)
+    dimension_guidance: dict[str, str] = Field(default_factory=dict)
+    requires_signature: bool = False
+
+
+class StyleRuleAssessment(Strict):
+    style_id: str = Field(min_length=1)
+    status: Literal["applied", "already-satisfied", "rejected"]
+    evidence: str = Field(min_length=1)
 
 
 class StyleReport(Strict):
@@ -130,6 +165,33 @@ class StyleReport(Strict):
     rejected: list[str]
     fidelity: Literal["pass", "fail"]
     reason: str = Field(min_length=1)
+    rule_assessments: list[StyleRuleAssessment] = Field(default_factory=list)
+
+
+class VoiceAssessment(Strict):
+    dimension: str = Field(min_length=1)
+    score: int = Field(ge=1, le=5)
+    location: str = Field(min_length=1)
+    evidence: str = Field(min_length=1)
+    reason: str = Field(min_length=1)
+    fix: str | None = None
+
+
+class GenericityTest(Strict):
+    result: Literal["pass", "fail"]
+    reason: str = Field(min_length=1)
+
+
+class VoiceReview(Strict):
+    schema_version: Literal[1] = 1
+    input_hashes: dict[str, str]
+    verdict: Literal["pass", "warn", "fail"]
+    summary: str = Field(min_length=1)
+    fidelity: Literal["pass", "fail"]
+    assessments: list[VoiceAssessment]
+    signature_passage: str | None = None
+    genericity_test: GenericityTest
+    findings: list[Finding] = Field(default_factory=list)
 
 
 class Visual(Strict):
@@ -158,6 +220,9 @@ class Feedback(Strict):
     before_hash: str
     after_hash: str
     diff: str
+    evidence_type: Literal["diff", "rejection", "reference-comparison"] = "diff"
+    reference_path: str | None = None
+    reference_excerpt: str | None = None
     proposed_rule: str = ""
     eval_proposal: str = ""
     review_after: str | None = None

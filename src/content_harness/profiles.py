@@ -76,7 +76,26 @@ def validate_profile(project, value):
         "default_target",
     )
     require(isinstance(value.get("style"), dict), "INVALID_PROFILE", "style")
-    identifier(value["style"].get("default_scenario", value["workflow"]))
+    style = value["style"]
+    identifier(style.get("default_scenario", value["workflow"]))
+    references = style.get("reference_files", [])
+    require(isinstance(references, list), "INVALID_PROFILE", "style.reference_files")
+    for path in references:
+        require(isinstance(path, str) and bool(path.strip()), "INVALID_PROFILE", path)
+        safe_path(project, path)
+    scenarios = style.get("scenarios", {})
+    require(isinstance(scenarios, dict), "INVALID_PROFILE", "style.scenarios")
+    for scenario, preset in scenarios.items():
+        identifier(scenario)
+        require(isinstance(preset, dict), "INVALID_PROFILE", f"style.scenarios.{scenario}")
+        scene = preset.get("scene")
+        require(scene is None or isinstance(scene, str), "INVALID_PROFILE", f"{scenario}.scene")
+        if scene:
+            identifier(scene)
+        polish = preset.get("polish", [])
+        require(isinstance(polish, list), "INVALID_PROFILE", f"{scenario}.polish")
+        for style_id in polish:
+            identifier(style_id)
     return value
 
 
@@ -101,6 +120,8 @@ def init(project: Path, workflow: str, preset: str, **options):
                 "default_polish": [],
                 "allow_run_override": True,
                 "default_scenario": workflow,
+                "reference_files": [],
+                "scenarios": {},
             },
             "write_policy": {"publish": "disabled", "export_conflict": "fail"},
         }
@@ -132,6 +153,9 @@ def apply_options(
     policy_files=None,
     author_file=None,
     scenario=None,
+    reference_files=None,
+    scene_style=None,
+    polish_styles=None,
 ):
     selected = target or value.get("default_target", next(iter(value["exports"])))
     identifier(selected)
@@ -150,6 +174,15 @@ def apply_options(
         value["author_sources"] = [author_file]
     if scenario is not None:
         value["style"]["default_scenario"] = identifier(scenario)
+    if reference_files is not None:
+        value["style"]["reference_files"] = list(dict.fromkeys(reference_files))
+    if scene_style is not None or polish_styles is not None:
+        scenario_id = identifier(scenario or value["style"].get("default_scenario", value["workflow"]))
+        preset = value["style"].setdefault("scenarios", {}).setdefault(scenario_id, {})
+        if scene_style is not None:
+            preset["scene"] = identifier(scene_style) if scene_style else None
+        if polish_styles is not None:
+            preset["polish"] = list(dict.fromkeys(polish_styles))
 
 
 def configure(project, **options):
@@ -205,3 +238,12 @@ def author_hash(project):
 def author_confirmed(project):
     path = safe_path(project, ".content-harness/author-confirmation.yaml")
     return path.exists() and read_yaml(path).get("content_hash") == author_hash(project)
+
+
+def scenario_preset(config, scenario):
+    style = config["style"]
+    preset = style.get("scenarios", {}).get(scenario, {})
+    return {
+        "scene": preset.get("scene", style.get("default_scene")),
+        "polish": preset.get("polish", style.get("default_polish", [])),
+    }

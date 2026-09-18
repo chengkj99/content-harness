@@ -2,8 +2,12 @@ import os
 import uuid
 from pathlib import Path
 
+import yaml
+from pydantic import ValidationError
+
 from .models import Artifact, Event, Manifest
 from .storage import (
+    HarnessError,
     atomic_write,
     files,
     json_bytes,
@@ -196,6 +200,23 @@ class Run:
     def report(self):
         ready = []
         gates = []
+        if "claims" in self.state.artifacts and self.artifact_path("claims").is_file():
+            from .gates import claim_batch_hash, claim_verification_items
+
+            try:
+                items = claim_verification_items(self, pending_only=True)
+            except (HarnessError, ValidationError, yaml.YAMLError, ValueError, OSError):
+                items = []
+            if items:
+                gates.append(
+                    {
+                        "gate": "claims",
+                        "claim_ids": [item["claim_id"] for item in items],
+                        "summaries": [item["text"] for item in items],
+                        "hash": claim_batch_hash(items),
+                        "command": f"content-harness verify-claims {self.state.run_id}",
+                    }
+                )
         for gate, name in self.workflow["gates"].items():
             if self.state.artifacts[name].status == "done" and not self.approved(gate):
                 gates.append(

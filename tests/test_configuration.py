@@ -137,6 +137,42 @@ def test_new_scenario_frozen_independent_of_workflow(workspace):
     assert lesson["scenario"] == "newsletter"
 
 
+def test_scenario_preset_selects_scene_and_polish(workspace):
+    project, _ = workspace
+    profiles.configure(
+        project,
+        scenario="personal-essay",
+        scene_style="personal-narrative-zh",
+        polish_styles=["natural-human-zh"],
+    )
+    result = runner.invoke(app, ["--project", str(project), "new", "personal"])
+    assert result.exit_code == 0, result.output
+    run = Run(Path(json.loads(result.output)["path"]))
+    assert run.state.scenario == "personal-essay"
+    assert run.state.style_selection == ["personal-narrative-zh", "natural-human-zh"]
+
+
+def test_cli_configure_rejects_unknown_style_before_writing(workspace):
+    project, _ = workspace
+    path = project / ".content-harness/project.yaml"
+    before = path.read_bytes()
+    result = runner.invoke(
+        app,
+        [
+            "--project",
+            str(project),
+            "configure",
+            "--scenario",
+            "personal-essay",
+            "--scene-style",
+            "missing-style",
+        ],
+    )
+    assert result.exit_code == 1
+    assert "STYLE_UNKNOWN" in result.output
+    assert path.read_bytes() == before
+
+
 def test_cli_configure_replaces_lists_and_can_clear(workspace):
     project, _ = workspace
     base = ["--project", str(project), "configure"]

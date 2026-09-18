@@ -24,12 +24,21 @@
       "skill": "research-claims",
       "check": "claims"
     },
+    "voice-contract": {
+      "path": "artifacts/18-voice-contract.yaml",
+      "depends_on": [
+        "claims"
+      ],
+      "skill": "select-style",
+      "check": "voice-contract"
+    },
     "brief": {
       "path": "artifacts/20-brief.md",
       "depends_on": [
         "idea",
         "sources",
-        "claims"
+        "claims",
+        "voice-contract"
       ],
       "skill": "shape-brief",
       "check": "brief"
@@ -37,7 +46,8 @@
     "style-spec": {
       "path": "artifacts/25-style-spec.yaml",
       "depends_on": [
-        "brief"
+        "brief",
+        "voice-contract"
       ],
       "skill": "select-style",
       "check": "style",
@@ -103,19 +113,33 @@
       "skill": "review-draft",
       "check": "review"
     },
+    "voice-review": {
+      "path": "artifacts/52-voice-review.yaml",
+      "depends_on": [
+        "brief",
+        "manuscript",
+        "style-spec",
+        "style-report",
+        "claims",
+        "voice-contract"
+      ],
+      "skill": "review-draft",
+      "check": "voice-review"
+    },
     "visual-plan": {
-      "path": "artifacts/52-visual-plan.yaml",
+      "path": "artifacts/53-visual-plan.yaml",
       "depends_on": [
         "manuscript",
         "claims",
         "fact-review",
-        "editorial-review"
+        "editorial-review",
+        "voice-review"
       ],
       "skill": "plan-visuals",
       "check": "visual-plan"
     },
     "visual-assets": {
-      "path": "artifacts/53-visual-assets.yaml",
+      "path": "artifacts/54-visual-assets.yaml",
       "depends_on": [
         "visual-plan"
       ],
@@ -129,6 +153,7 @@
         "manuscript",
         "fact-review",
         "editorial-review",
+        "voice-review",
         "visual-assets",
         "style-report"
       ],

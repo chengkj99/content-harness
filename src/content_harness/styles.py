@@ -1,8 +1,8 @@
 import difflib
 import uuid
 
-from .models import Feedback
-from .profiles import author_confirmed, author_path, profile
+from .models import Feedback, VoiceContract
+from .profiles import author_confirmed, author_path, profile, scenario_preset
 from .storage import (
     atomic_write,
     digest,
@@ -25,10 +25,117 @@ def pack(style_id):
     return {**read_yaml(root / "rubric.yaml"), "rules": (root / "STYLE.md").read_text()}
 
 
+def _reference_payload(project, path):
+    resolved = safe_path(project, path)
+    require(resolved.is_file(), "STYLE_REFERENCE_MISSING", path)
+    value = read_yaml(resolved)
+    items = value.get("references", []) if isinstance(value, dict) else []
+    require(isinstance(items, list) and items, "STYLE_REFERENCE_INVALID", path)
+    return {"path": path, "content_hash": digest(resolved.read_bytes()), "references": items}
+
+
+def voice_source_data(run, project):
+    config = profile(project)
+    scenario_id = run.state.scenario or run.state.workflow
+    memory_root = safe_path(project, ".content-harness/style-memory")
+    author = read_yaml(safe_path(memory_root, "author.yaml"))
+    scenario = read_yaml(safe_path(memory_root, f"scenarios/{scenario_id}.yaml"))
+    references = [
+        _reference_payload(project, path) for path in config["style"].get("reference_files", [])
+    ]
+    return {
+        "scenario_id": scenario_id,
+        "selected_styles": list(run.state.style_selection),
+        "style_intensity": run.state.style_intensity,
+        "author_profile": author_path(project).read_text(),
+        "author_memory": author,
+        "scenario_memory": scenario,
+        "scenario_preset": scenario_preset(config, scenario_id),
+        "reference_files": references,
+    }
+
+
+def voice_source_hash(run, project):
+    return digest(json_bytes(voice_source_data(run, project)))
+
+
+def compile_voice_contract(run, project):
+    require("voice-contract" in run.state.artifacts, "ARTIFACT_UNKNOWN", "voice-contract")
+    require(author_confirmed(project), "AUTHOR_CONFIRMATION_REQUIRED", "confirm-author")
+    data = voice_source_data(run, project)
+    references = []
+    for source in data.pop("reference_files"):
+        references.extend(source["references"])
+    selected = data["selected_styles"]
+    dimensions = []
+    guidance = {}
+    requires_signature = False
+    style_packs = []
+    for style_id in dict.fromkeys(selected):
+        style = pack(style_id)
+        style_packs.append(style)
+        dimensions.extend(style.get("dimensions", []))
+        for dimension in style.get("dimensions", []):
+            guidance.setdefault(dimension, style.get("anchors", {}).get("3", style["rules"]))
+        requires_signature = requires_signature or bool(style.get("requires_signature", False))
+    for reference in references:
+        dimensions.extend(reference.get("dimensions", []))
+        for dimension in reference.get("dimensions", []):
+            guidance.setdefault(dimension, reference.get("reason", "对照参考样本评估"))
+    for scope, memory in (("author", data["author_memory"]), ("scenario", data["scenario_memory"])):
+        for index, rule in enumerate(memory.get("rules", []), start=1):
+            dimension = f"{scope}-memory:{rule.get('lesson_id', index)}"
+            dimensions.append(dimension)
+            guidance[dimension] = rule.get("eval") or rule.get("rule", "检查长期风格规则")
+    contract = VoiceContract(
+        **data,
+        source_hash=voice_source_hash(run, project),
+        style_packs=style_packs,
+        references=references,
+        required_dimensions=list(dict.fromkeys(dimensions)),
+        dimension_guidance=guidance,
+        requires_signature=requires_signature,
+    ).model_dump()
+    record = run.state.artifacts["voice-contract"]
+    require(
+        record.content_hash == record.registered_hash or record.content_hash is None,
+        "CONFLICT_EXTERNAL_EDIT",
+        "voice-contract has unregistered manual edits; preserve them before recompiling",
+    )
+    atomic_write(safe_path(run.path, "voice-compiled.yaml"), yaml_bytes(contract))
+    atomic_write(run.artifact_path("voice-contract"), yaml_bytes(contract))
+    run.scan()
+    run.register("voice-contract")
+    return contract
+
+
+def scan_voice_contract(run, project):
+    if "voice-contract" not in run.state.artifacts:
+        return False
+    record = run.state.artifacts["voice-contract"]
+    if record.status != "done" or not run.artifact_path("voice-contract").is_file():
+        return False
+    contract = VoiceContract.model_validate(read_yaml(run.artifact_path("voice-contract")))
+    if contract.source_hash == voice_source_hash(run, project):
+        return False
+    record.status, record.reason = "stale", "voice_sources_changed"
+    record.revision += 1
+    run.invalidate_descendants({"voice-contract"})
+    run.save("scan:voice-contract")
+    return True
+
+
 def compile_style(run, project, selection, intensity):
     require(run.approved("brief"), "APPROVAL_REQUIRED", "brief")
     require(author_confirmed(project), "AUTHOR_CONFIRMATION_REQUIRED", "confirm-author")
     require(intensity in {"low", "medium", "high"}, "INVALID_INTENSITY", intensity)
+    # Preserve an observed manual edit before evaluating a requested recompile.
+    record = run.state.artifacts["style-spec"]
+    require(
+        record.content_hash == record.registered_hash or record.content_hash is None,
+        "CONFLICT_EXTERNAL_EDIT",
+        "style-spec has unregistered manual edits; preserve them before recompiling",
+    )
     config = profile(project)
     require(
         config["style"].get("allow_run_override", True) or selection == run.state.style_selection,
@@ -40,13 +147,39 @@ def compile_style(run, project, selection, intensity):
         item = pack(style_id)
         if item["layer"] != "base":
             stack[item["layer"]].append(item)
-    memory_root = safe_path(project, ".content-harness/style-memory")
-    with lock(memory_root):
-        author = read_yaml(safe_path(memory_root, "author.yaml"))
-        scenario_id = run.state.scenario or run.state.workflow
-        scenario = read_yaml(safe_path(memory_root, f"scenarios/{scenario_id}.yaml"))
-        author_text = author_path(project).read_text()
-        memory = {"author": author, "scenario": scenario, "author_profile": author_text}
+    voice_hash = None
+    if "voice-contract" in run.state.artifacts:
+        require(
+            run.state.artifacts["voice-contract"].status == "done",
+            "DEPENDENCY_BLOCKED",
+            "voice-contract",
+        )
+        contract = VoiceContract.model_validate(read_yaml(run.artifact_path("voice-contract")))
+        require(
+            list(dict.fromkeys(selection)) == contract.selected_styles
+            and intensity == contract.style_intensity,
+            "VOICE_STYLE_MISMATCH",
+            "Style selection or intensity changed after the voice contract; rerun voice before the Brief",
+        )
+        author = contract.author_memory
+        scenario = contract.scenario_memory
+        author_text = contract.author_profile
+        scenario_id = contract.scenario_id
+        memory = {
+            "author": author,
+            "scenario": scenario,
+            "author_profile": author_text,
+            "references": [r.model_dump() for r in contract.references],
+        }
+        voice_hash = run.hash("voice-contract")
+    else:
+        memory_root = safe_path(project, ".content-harness/style-memory")
+        with lock(memory_root):
+            author = read_yaml(safe_path(memory_root, "author.yaml"))
+            scenario_id = run.state.scenario or run.state.workflow
+            scenario = read_yaml(safe_path(memory_root, f"scenarios/{scenario_id}.yaml"))
+            author_text = author_path(project).read_text()
+            memory = {"author": author, "scenario": scenario, "author_profile": author_text}
     stack["author"] = {
         "id": "project-author",
         "version": author["version"],
@@ -75,14 +208,8 @@ def compile_style(run, project, selection, intensity):
             "qualifiers",
             "confirmed_experience",
         ],
+        "voice_contract_hash": voice_hash,
     }
-    # Explicit style changes preserve the old registered revision in snapshots.
-    record = run.state.artifacts["style-spec"]
-    require(
-        record.content_hash == record.registered_hash or record.content_hash is None,
-        "CONFLICT_EXTERNAL_EDIT",
-        "style-spec has unregistered manual edits; preserve them before recompiling",
-    )
     run.state.style_selection, run.state.style_intensity = selection, intensity
     atomic_write(safe_path(run.path, "style-compiled.yaml"), yaml_bytes(spec))
     atomic_write(run.artifact_path("style-spec"), yaml_bytes(spec))
@@ -123,6 +250,35 @@ def feedback(run, project, artifact, scope, reason):
             safe_path(root, f"candidates/{lesson.lesson_id}.yaml"), yaml_bytes(lesson.model_dump())
         )
     run.save("style-feedback:" + lesson.lesson_id)
+    return lesson.model_dump()
+
+
+def note_feedback(run, project, artifact, scope, reason, reference_path=None, reference_excerpt=None):
+    require(scope in {"run", "author", "scenario"}, "INVALID_SCOPE", scope)
+    require(artifact in {"draft", "manuscript"}, "INVALID_ARTIFACT", artifact)
+    current_hash = run.hash(artifact)
+    require(bool(current_hash), "ASSET_MISSING", artifact)
+    evidence_type = "reference-comparison" if reference_path or reference_excerpt else "rejection"
+    lesson = Feedback(
+        lesson_id="lesson-" + uuid.uuid4().hex[:12],
+        run_id=run.state.run_id,
+        artifact=artifact,
+        scope=scope,
+        scenario=run.state.scenario or run.state.workflow,
+        reason=reason,
+        before_hash=run.state.artifacts[artifact].registered_hash or current_hash,
+        after_hash=current_hash,
+        diff="",
+        evidence_type=evidence_type,
+        reference_path=reference_path,
+        reference_excerpt=reference_excerpt,
+    )
+    root = safe_path(project, ".content-harness/style-memory")
+    with lock(root):
+        atomic_write(
+            safe_path(root, f"candidates/{lesson.lesson_id}.yaml"), yaml_bytes(lesson.model_dump())
+        )
+    run.save("style-note:" + lesson.lesson_id)
     return lesson.model_dump()
 
 

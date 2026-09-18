@@ -29,7 +29,7 @@ content-harness resume <run-id> --json
 
 status 会扫描文件并写入“发现变化”事件，但不改文章。手改文件成为 in_progress，下游成为 stale；check 后才重新登记。review 的 input_hashes 必须是当前依赖，旧报告不能原样复用。
 
-style-feedback 在登记人工改稿之前执行，否则最新快照会成为新比较基线。
+style-feedback 在登记人工改稿之前执行，否则最新快照会成为新比较基线。用户只给拒稿理由或对标样稿时使用 style-note，不要求先制造一份人工 diff。
 
 ## 错误处理
 

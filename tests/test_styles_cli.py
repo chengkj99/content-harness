@@ -6,6 +6,7 @@ from typer.testing import CliRunner
 
 from content_harness import profiles, styles
 from content_harness.cli import app
+from content_harness.gates import claim_batch_hash, claim_verification_items, ledger
 from content_harness.state import Run
 from content_harness.storage import HarnessError, atomic_write, digest, read_yaml, yaml_bytes
 
@@ -47,14 +48,16 @@ def test_memory_snapshot_is_not_live_dependency(workspace):
     assert run.artifact_path("style-spec").read_bytes() == before
 
 
-def test_style_switch_stales_only_downstream(workspace):
+def test_style_switch_after_voice_contract_leaves_completed_run_unchanged(workspace):
     project, run = workspace
     build_package(run, project)
-    styles.compile_style(run, project, ["natural-human-zh"], "medium")
+    with pytest.raises(HarnessError) as error:
+        styles.compile_style(run, project, ["natural-human-zh"], "medium")
+    assert error.value.code == "VOICE_STYLE_MISMATCH"
     assert run.state.artifacts["brief"].status == "done"
     assert run.state.artifacts["claims"].status == "done"
-    assert run.state.artifacts["outline"].status == "stale"
-    assert run.state.artifacts["publish-package"].status == "stale"
+    assert run.state.artifacts["outline"].status == "done"
+    assert run.state.artifacts["publish-package"].status == "done"
 
 
 def test_feedback_promotion_and_rollback_scoped(workspace):
@@ -101,18 +104,161 @@ def test_run_only_feedback_not_promoted(workspace):
         )
 
 
-@pytest.mark.parametrize("command", ["approve", "verify-claim", "confirm-author"])
+def test_style_note_records_rejection_without_manual_diff(workspace):
+    project, run = workspace
+    build_to_manuscript(run, project)
+    lesson = styles.note_feedback(
+        run,
+        project,
+        "manuscript",
+        "scenario",
+        "作者退场，文章变成通用方法文",
+        reference_excerpt="先从真实谈话进入，再回到作者经历",
+    )
+    assert lesson["evidence_type"] == "reference-comparison"
+    assert lesson["diff"] == ""
+    assert lesson["before_hash"] == lesson["after_hash"]
+    candidate = (
+        project / ".content-harness/style-memory/candidates" / (lesson["lesson_id"] + ".yaml")
+    )
+    assert candidate.is_file()
+
+
+def test_reference_change_stales_voice_contract_and_downstream(workspace):
+    project, run = workspace
+    reference = project / "voice-reference.yaml"
+    atomic_write(
+        reference,
+        yaml_bytes(
+            {
+                "references": [
+                    {
+                        "reference_id": "positive-1",
+                        "role": "positive",
+                        "source": "Synthetic approved sample",
+                        "dimensions": ["作者特异性"],
+                        "excerpt": "只有这个作者能说出的具体经历。",
+                        "reason": "用真实经历承担判断。",
+                    }
+                ]
+            }
+        ),
+    )
+    profiles.configure(project, reference_files=["voice-reference.yaml"])
+    build_to_brief(run)
+    contract = read_yaml(run.artifact_path("voice-contract"))
+    assert contract["references"][0]["reference_id"] == "positive-1"
+    atomic_write(reference, reference.read_bytes() + b"\n")
+    assert styles.scan_voice_contract(run, project)
+    assert run.state.artifacts["voice-contract"].status == "stale"
+    assert run.state.artifacts["brief"].status == "stale"
+
+
+def test_voice_contract_embeds_style_rules_and_memory_evals(workspace):
+    project, run = workspace
+    run.state.style_selection = ["personal-narrative-zh", "natural-human-zh"]
+    run.save("test-style-selection")
+    memory = project / ".content-harness/style-memory/author.yaml"
+    atomic_write(
+        memory,
+        yaml_bytes(
+            {
+                "version": 1,
+                "rules": [
+                    {
+                        "lesson_id": "lesson-voice",
+                        "rule": "作者持续在场",
+                        "eval": "正文中段仍有作者经历与判断",
+                    }
+                ],
+            }
+        ),
+    )
+    build_to_brief(run)
+    contract = read_yaml(run.artifact_path("voice-contract"))
+    assert [item["id"] for item in contract["style_packs"]] == [
+        "personal-narrative-zh",
+        "natural-human-zh",
+    ]
+    assert contract["selected_styles"] == ["personal-narrative-zh", "natural-human-zh"]
+    assert "author-memory:lesson-voice" in contract["required_dimensions"]
+    assert contract["dimension_guidance"]["author-memory:lesson-voice"] == (
+        "正文中段仍有作者经历与判断"
+    )
+
+
+def test_style_cannot_change_after_voice_contract_and_brief_approval(workspace):
+    project, run = workspace
+    build_to_brief(run)
+    approve_fixture(run, "brief")
+    with pytest.raises(HarnessError) as error:
+        styles.compile_style(run, project, ["natural-human-zh"], "medium")
+    assert error.value.code == "VOICE_STYLE_MISMATCH"
+
+
+def test_voice_command_changes_style_and_stales_existing_brief(workspace):
+    project, run = workspace
+    build_to_brief(run)
+    result = call(
+        project,
+        "voice",
+        run.state.run_id,
+        "--use",
+        "personal-narrative-zh",
+        "--intensity",
+        "high",
+    )
+    assert result.exit_code == 0, result.output
+    refreshed = Run(run.path)
+    contract = read_yaml(refreshed.artifact_path("voice-contract"))
+    assert contract["selected_styles"] == ["personal-narrative-zh"]
+    assert contract["style_intensity"] == "high"
+    assert refreshed.state.artifacts["brief"].status == "stale"
+
+
+@pytest.mark.parametrize(
+    "command", ["approve", "verify-claim", "verify-claims", "confirm-author"]
+)
 def test_non_tty_human_operations_refused(workspace, command):
     project, run = workspace
     build_to_brief(run)
+    if command == "verify-claims":
+        value = read_yaml(run.artifact_path("claims"))
+        value["claims"][0].update(
+            type="experience",
+            status="author-confirmed",
+            provenance="Synthetic author statement",
+        )
+        atomic_write(run.artifact_path("claims"), yaml_bytes(value))
+        run.scan()
     args = {
         "approve": [run.state.run_id, "brief"],
         "verify-claim": [run.state.run_id, "c1"],
+        "verify-claims": [run.state.run_id],
         "confirm-author": [],
     }
     result = call(project, command, *args[command])
     assert result.exit_code == 1, result.output
     assert "HUMAN_TTY_REQUIRED" in result.output
+
+
+def test_tty_batch_claim_verification_roundtrip(workspace, monkeypatch):
+    project, run = workspace
+    build_to_brief(run)
+    claim = ledger(run).claims[0]
+    claim.type = "experience"
+    claim.status = "author-confirmed"
+    claim.provenance = "Synthetic author statement"
+    atomic_write(run.artifact_path("claims"), yaml_bytes({"claims": [claim.model_dump()]}))
+    run.scan()
+    monkeypatch.setattr("content_harness.cli.is_tty", lambda: True)
+    items = claim_verification_items(run, pending_only=True)
+    expected = claim_batch_hash(items)
+    monkeypatch.setattr("content_harness.cli.typer.prompt", lambda _: expected)
+    result = call(project, "verify-claims", run.state.run_id)
+    assert result.exit_code == 0, result.output
+    refreshed = Run(run.path)
+    assert refreshed.state.claim_verifications[claim.claim_id] == items[0]["content_hash"]
 
 
 def test_tty_approval_roundtrip_and_input_change(workspace, monkeypatch):

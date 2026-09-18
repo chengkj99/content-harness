@@ -1,4 +1,37 @@
 {
+  "$defs": {
+    "StyleRuleAssessment": {
+      "additionalProperties": false,
+      "properties": {
+        "style_id": {
+          "minLength": 1,
+          "title": "Style Id",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "applied",
+            "already-satisfied",
+            "rejected"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "evidence": {
+          "minLength": 1,
+          "title": "Evidence",
+          "type": "string"
+        }
+      },
+      "required": [
+        "style_id",
+        "status",
+        "evidence"
+      ],
+      "title": "StyleRuleAssessment",
+      "type": "object"
+    }
+  },
   "additionalProperties": false,
   "properties": {
     "schema_version": {
@@ -41,6 +74,13 @@
       "minLength": 1,
       "title": "Reason",
       "type": "string"
+    },
+    "rule_assessments": {
+      "items": {
+        "$ref": "#/$defs/StyleRuleAssessment"
+      },
+      "title": "Rule Assessments",
+      "type": "array"
     }
   },
   "required": [

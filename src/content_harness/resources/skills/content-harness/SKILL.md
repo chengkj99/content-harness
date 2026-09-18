@@ -10,6 +10,7 @@ description: 用户要使用 Content Harness 写文章、开始任务、处理�
 3. 只从 ready 选一个资产，读取其生产 Skill；human_gates 非空则展示具体文稿摘要、哈希与命令并停止。
 4. 每完成一种资产，执行 check --artifact，再重新读取 status。不要凭对话推测状态；遇 stale 只处理受影响资产。
 5. publish-package 完成后等待用户审批；export 成功表示本地交付完成，不表示公众号已发布。
+6. 用户拒绝稿件或给出对标样稿时，先运行 style-note 记录原话，再判断问题最早出现在 Claims、Brief、Outline 还是 Manuscript。不得只在句子层“去 AI 味”。
 
 ## 面向创作者的交互
 
@@ -17,7 +18,8 @@ description: 用户要使用 Content Harness 写文章、开始任务、处理�
 - 读取配置的 author_sources 指定的作者资料，不假定文件名；缺少作者确认时，先解释确认内容，再给出用户可直接复制的完整命令。审批命令必须替换真实项目路径与 run-id，不能把 `<run-id>` 留给新手猜。
 - 只在必须用户决策/审批或输入不足时停下。用户在聊天中说“同意”不等于终端审批，不可代为输入确认。
 - 用户需要区分读书笔记、教程等偏好时，解释 `new --scenario` 只选择风格记忆，不会切换成新的内容生产流程。没有明确选择则沿用项目默认场景。
+- 新工作流的 voice-contract 在 Brief 之前生成。项目配置中的 reference_files 是表达样本，不得把样稿事实、数字和经历迁移到新文章。
 - 导出前核对实际目标与目录；默认执行 `export <run-id>` 使用项目 default_target，不强制 wechat。新目标不是新的平台发布接口。不得自行修改 Wiki 索引或摄入知识库。
 
 
-遇到缺少输入、stale 依赖或人类审批要求时，报告阻塞及具体下一步。Agent 不得自行执行 approve、confirm-author、verify-claim、style-promote、style-rollback。
+遇到缺少输入、stale 依赖或人类审批要求时，报告阻塞及具体下一步。Agent 不得自行执行 approve、confirm-author、verify-claim、verify-claims、style-promote、style-rollback。

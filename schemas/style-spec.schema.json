@@ -42,6 +42,18 @@
       },
       "title": "Protected",
       "type": "array"
+    },
+    "voice_contract_hash": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Voice Contract Hash"
     }
   },
   "required": [

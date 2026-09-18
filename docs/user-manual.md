@@ -62,9 +62,9 @@ content-harness confirm-author
 1. **开始**：AI 执行 `new` 创建 run，编号为日期加 slug。
 2. **整理依据**：AI 保存 idea、sources（来源）、claims（事实主张）、brief（写作方向说明），每步用 `check --artifact` 登记。
 3. **确认方向**（**你执行**）：审阅 brief 后执行 `approve <run-id> brief`，输入屏幕显示的哈希指纹。
-4. **选风格**：AI 执行 `style` 编译风格说明。三种内置选择：正常表达（neutral / natural-human-zh）、公众号高传播（wechat-high-engagement）、高传播加去 AI 味。
+4. **固化声音并选风格**：AI 先执行 `voice`，把作者资料、场景记忆和正反样稿带进选题卡；选题卡通过后再执行 `style`。内置风格包括正常表达（neutral）、个人叙事（personal-narrative-zh）、公众号高传播（wechat-high-engagement）与去 AI 味（natural-human-zh），可以组合。
 5. **写作**：AI 依次完成 outline（提纲）、draft（初稿）、manuscript（成稿）、style-report（风格检查报告）。
-6. **评审**：AI 完成 fact-review（事实检查）和 editorial-review（编辑检查）。遇到高风险事实或需认定为你亲历的内容，会请你执行 `verify-claim`（**你执行**）。
+6. **评审**：AI 完成 fact-review（事实检查）和 editorial-review（编辑检查）。遇到高风险事实或需认定为你亲历的内容，会请你执行一次 `verify-claims`；需要拆开核对时仍可执行 `verify-claim`（**你执行**）。
 7. **配图**：需要图时生成 visual-plan 和 visual-assets；不需要时写明原因。
 8. **打包**：AI 执行 `package <run-id> --titles titles.txt --summary summary.txt`。
 9. **最终确认**（**你执行**）：审阅正文、标题、摘要、图片后执行 `approve <run-id> publish`。
@@ -118,7 +118,8 @@ content-harness confirm-author
 |---|---|
 | `confirm-author` | 作者资料是否真实、表达边界是否合适 |
 | `approve <run-id> brief` | 写作方向和范围 |
-| `verify-claim <run-id> <claim-id>` | 需人工核验的事实或亲历 |
+| `verify-claims <run-id>` | 一次核验当前全部待确认的事实或亲历 |
+| `verify-claim <run-id> <claim-id>` | 单独核验一条事实或亲历 |
 | `approve <run-id> publish` | 最终正文、标题、摘要、图片 |
 | `style-promote <run-id> <lesson-id>` | 是否把候选偏好写入长期风格记忆 |
 | `style-rollback <scope> <version>` | 是否恢复旧版本风格记忆 |
@@ -129,7 +130,7 @@ content-harness confirm-author
 
 手工改过成稿后，希望形成长期规则时：
 
-1. **在重新登记手改稿之前**，让 AI 执行 `style-feedback <run-id> --artifact manuscript --scope scenario --reason '你的理由'`，保存修改前后差异。
+1. **在重新登记手改稿之前**，让 AI 执行 `style-feedback <run-id> --artifact manuscript --scope scenario --reason '你的理由'`，保存修改前后差异。只有拒稿理由或对标稿、没有手改文件时，执行 `style-note`。
 2. AI 整理候选规则，给出应该改和不应该改的例子。
 3. 你审阅后亲自执行 `style-promote`，规则才进入长期记忆并用于以后的文章。
 

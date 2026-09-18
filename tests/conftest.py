@@ -5,7 +5,7 @@ import pytest
 from content_harness import exporting, profiles, styles, workflows
 from content_harness.models import Approval
 from content_harness.state import Run
-from content_harness.storage import atomic_write, now, yaml_bytes
+from content_harness.storage import atomic_write, now, read_yaml, yaml_bytes
 
 
 def write(run, name, data):
@@ -41,6 +41,7 @@ def input_hashes(run, name):
 
 
 def build_to_brief(run):
+    project = run.path.parents[2]
     write(run, "idea", "# 想法\n怎样让一次写作有可检查的交付？")
     write(
         run,
@@ -74,6 +75,7 @@ def build_to_brief(run):
             ]
         },
     )
+    styles.compile_voice_contract(run, project)
     write(
         run,
         "brief",
@@ -82,9 +84,12 @@ def build_to_brief(run):
 
 
 def build_to_manuscript(run, project, selection=None):
+    if selection is not None:
+        run.state.style_selection = list(selection)
+        run.save("test-style-selection")
     build_to_brief(run)
     approve_fixture(run, "brief")
-    styles.compile_style(run, project, selection or [], "medium")
+    styles.compile_style(run, project, run.state.style_selection, "medium")
     write(run, "outline", "# 提纲\n先列出检查对象，再保存检查结果。")
     draft = "# 可检查的交付\n\n在当前样本中，可能减少 2 次遗漏。<!-- claim:c1 -->\n\n先选一个需要检查的对象。\n"
     write(run, "draft", draft)
@@ -92,6 +97,12 @@ def build_to_manuscript(run, project, selection=None):
 
 
 def build_reviews(run):
+    spec = read_yaml(run.artifact_path("style-spec"))
+    selected = [
+        item["id"]
+        for layer in ("scene", "polish")
+        for item in spec["style_stack"].get(layer, [])
+    ]
     write(
         run,
         "style-report",
@@ -101,6 +112,14 @@ def build_reviews(run):
             "rejected": [],
             "fidelity": "pass",
             "reason": "Synthetic unchanged draft",
+            "rule_assessments": [
+                {
+                    "style_id": style_id,
+                    "status": "already-satisfied",
+                    "evidence": "Synthetic fixture body",
+                }
+                for style_id in selected
+            ],
         },
     )
     for name in ["fact-review", "editorial-review"]:
@@ -124,6 +143,47 @@ def build_reviews(run):
                 else [],
             },
         )
+    contract = read_yaml(run.artifact_path("voice-contract"))
+    voice_dimensions = list(contract["required_dimensions"])
+    configured_styles = [
+        item
+        for layer in ("scene", "polish")
+        for item in spec["style_stack"].get(layer, [])
+    ]
+    for item in configured_styles:
+        voice_dimensions.extend(item.get("dimensions", []))
+    voice_dimensions = list(dict.fromkeys(voice_dimensions))
+    requires_signature = contract["requires_signature"] or any(
+        item.get("requires_signature", False) for item in configured_styles
+    )
+    write(
+        run,
+        "voice-review",
+        {
+            "input_hashes": input_hashes(run, "voice-review"),
+            "verdict": "pass",
+            "summary": "Synthetic voice assessment",
+            "fidelity": "pass",
+            "assessments": [
+                {
+                    "dimension": dimension,
+                    "score": 3,
+                    "location": "Synthetic fixture body",
+                    "evidence": "Fixture evidence",
+                    "reason": "Fixture satisfies the configured minimum",
+                }
+                for dimension in voice_dimensions
+            ],
+            "signature_passage": "Synthetic author-specific passage"
+            if requires_signature
+            else None,
+            "genericity_test": {
+                "result": "pass",
+                "reason": "Synthetic fixture explicitly identifies its test context",
+            },
+            "findings": [],
+        },
+    )
 
 
 def build_package(run, project):

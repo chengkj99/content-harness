@@ -14,4 +14,4 @@ description: Content Harness 已有配图计划，需要制作或登记文章图
 
 操作前读取 [资产与 CLI 契约](../content-harness/references/contract.md)。
 
-遇到缺少输入、stale 依赖或人类审批要求时，报告阻塞及具体下一步。Agent 不得自行执行 approve、confirm-author、verify-claim、style-promote、style-rollback。
+遇到缺少输入、stale 依赖或人类审批要求时，报告阻塞及具体下一步。Agent 不得自行执行 approve、confirm-author、verify-claim、verify-claims、style-promote、style-rollback。

@@ -7,10 +7,13 @@
 ```mermaid
 flowchart TD
   idea --> sources --> claims
+  claims --> voice[voice-contract]
   idea --> brief
   sources --> brief
   claims --> brief
+  voice --> brief
   brief -->|人工批准| style_spec["style-spec"]
+  voice --> style_spec
   brief --> outline
   style_spec --> outline
   brief --> draft
@@ -29,8 +32,13 @@ flowchart TD
   manuscript --> edit
   brief --> edit
   style_spec --> edit
+  manuscript --> voice_review[voice-review]
+  brief --> voice_review
+  voice --> voice_review
+  style_spec --> voice_review
   facts --> visual[visual-plan]
   edit --> visual
+  voice_review --> visual
   manuscript --> visual
   claims --> visual
   visual --> assets[visual-assets]
@@ -39,6 +47,7 @@ flowchart TD
   brief --> package
   facts --> package
   edit --> package
+  voice_review --> package
   report --> package
   package -->|人工批准| export[本地导出]
 ```
@@ -63,7 +72,13 @@ flowchart TD
 
 风格差异检查保护数字、单位、URL、引文、部分限定词、claim 标记和显式 protected_terms。字符串保持不能推出语义保持，不把有限测试称为“所有事实变化 100% 拦截”。
 
-## 风格和交付
+## 作者声音、风格和交付
+
+新 run 在 Brief 前编译 voice-contract，固化作者资料、场景预设、作者/场景记忆与项目内正反样稿。`style.reference_files` 只作为表达证据，不得把样稿经历迁移成正文事实。作者资料、记忆、场景预设或参考文件变化时，status 将 voice-contract 及其下游标为 stale。
+
+style-spec 仍在 Brief 审批后编译，负责本篇 Scene/Polish 选择。场景可以配置自己的默认风格栈；显式 run 选择优先。个人叙事可使用 personal-narrative-zh，句式清理使用 natural-human-zh。
+
+voice-review 独立于事实与编辑评审。它逐项覆盖 voice-contract 和已选风格的维度，要求正文位置、证据与分数；个人叙事还要求作者特异性段落和通用性测试。确定性门禁只能验证覆盖和自洽，最终是否像作者仍由作者在发布审批时判断。
 
 style 编译规则全文、版本与项目记忆快照。feedback 只建候选；用户确认的 promote/rollback 在项目锁内改变记忆并保存版本。
 

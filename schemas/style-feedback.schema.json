@@ -48,6 +48,40 @@
       "title": "Diff",
       "type": "string"
     },
+    "evidence_type": {
+      "default": "diff",
+      "enum": [
+        "diff",
+        "rejection",
+        "reference-comparison"
+      ],
+      "title": "Evidence Type",
+      "type": "string"
+    },
+    "reference_path": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Reference Path"
+    },
+    "reference_excerpt": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Reference Excerpt"
+    },
     "proposed_rule": {
       "default": "",
       "title": "Proposed Rule",

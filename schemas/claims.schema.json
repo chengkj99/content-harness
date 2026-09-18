@@ -79,6 +79,35 @@
           },
           "title": "Protected Terms",
           "type": "array"
+        },
+        "narrative_role": {
+          "anyOf": [
+            {
+              "enum": [
+                "scene",
+                "conflict",
+                "turn",
+                "reflection",
+                "context"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Narrative Role"
+        },
+        "sensitivity": {
+          "default": "normal",
+          "enum": [
+            "normal",
+            "private",
+            "sensitive"
+          ],
+          "title": "Sensitivity",
+          "type": "string"
         }
       },
       "required": [

@@ -24,10 +24,12 @@ run 可以理解为“一篇文章的一次工作记录”。它有自己的编�
 |---|---|---|---|
 | `content-harness status <run-id> --json` | 看这篇写到哪，哪些检查需要重做 | AI | 更新发现文件变化的状态记录，不改文章正文 |
 | `content-harness resume <run-id> --json` | 从磁盘恢复进度，告诉 AI 下一步 | AI | 重建/更新状态，不会自己续写正文 |
-| `content-harness style <run-id> --reset` | 关闭额外风格，恢复作者资料加默认表达 | AI，按你的要求 | 重编风格说明，使相关下游稿件/检查失效；不删除旧稿、不清空长期记忆 |
+| `content-harness voice <run-id> --reset` | 在选题卡前关闭该篇的额外风格 | AI，按你的要求 | 重编声音契约，使已有选题卡和下游失效；不删除旧稿、不清空长期记忆 |
 | `content-harness init . --preset wiki` | 在当前知识库中准备工作区 | 首次准备时由 AI 帮助 | 新建工具配置和必要模板，不生成文章；已有配置会拒绝重复初始化 |
 | `content-harness install-skills --client codex` | 把写作操作指引放到 Codex 可发现的目录 | AI | 安装本项目的 13 个 Skills；不是安装 Codex 本身 |
 | `content-harness style-feedback ...` | 记录你改了什么、为什么改，为以后积累偏好 | AI | 新建反馈候选，不自动更改长期风格 |
+| `content-harness style-note ...` | 记录拒稿理由或对标样稿，不要求先手工改稿 | AI | 新建反馈候选，不自动更改长期风格 |
+| `content-harness voice <run-id> [--use ...]` | 在选题卡前固化作者、场景、正反样稿及该篇风格 | AI | 生成 voice-contract；换风格或来源变化时让已有选题卡和下游返工 |
 
 特别注意：resume 的作用是恢复进度，“真正接着写”仍由 AI 完成。你可以说：“请继续这篇文章，先用 resume 检查状态，再执行下一步。”
 
@@ -43,12 +45,24 @@ content-harness style-feedback <run-id> --artifact manuscript --scope scenario -
 
 需要在重新登记手改稿前执行，否则比较基线会被更新。候选规则由 AI 整理，你确认后才执行 style-promote。scope run 只记本次；author 表示作者级偏好，适用范围更广，应谨慎确认。
 
+如果你没有直接改文件，只是说“太像 AI”“没有我的味道”或给了一篇对标稿，AI 应使用：
+
+```bash
+content-harness style-note <run-id> --artifact manuscript --scope scenario --reason '作者退场，文章变成通用方法文'
+```
+
+style-note 保存被拒稿件哈希和反馈原话；可选 reference-path 或 reference-excerpt。它同样只生成候选，不自动改变长期风格。
+
+新工作流要换当前文章的风格，应在选题卡审批前执行 `voice --use ...`。选题卡已经生成时会被标为 stale，需要按新风格重做并再次审批。之后的 `style` 只把声音契约中已冻结的选择编译为写作说明，不会在审批后暗中换风格。
+
 ## 设置目录的命令
 
 ```bash
 content-harness configure --output-dir '知识库/我的文章' --target library
 content-harness configure --read-root '素材' --read-root '笔记' --dedupe-root '旧文章'
 content-harness configure --scenario book-notes
+content-harness configure --scenario personal-essay --scene-style personal-narrative-zh --polish-style natural-human-zh
+content-harness configure --style-reference '.content-harness/style-references/author-samples.yaml'
 ```
 
 分别表示设置成品位置、资料与查重位置、新文章默认的风格分组。带空格或模板变量的路径应放在引号中。配置变化不移动旧文件；完整说明见 [目录设置](wiki-integration.md)。
@@ -59,7 +73,7 @@ content-harness configure --scenario book-notes
 |---|---|
 | `confirm-author` | 作者资料是否真实、表达边界是否合适 |
 | `approve <run-id> brief` | 写作方向和范围 |
-| `verify-claim <run-id> <claim-id>` | 需要人工核验的具体事实或亲历 |
+| `verify-claims <run-id>` | 一次核验当前全部待确认的事实或亲历；仍可用 `verify-claim` 单独确认一条 |
 | `approve <run-id> publish` | 最终正文、标题、摘要、图片与交付 |
 | `style-promote <run-id> <lesson-id>` | 是否把候选偏好用于以后的作者/场景表达 |
 | `style-rollback ...` | 是否恢复某个旧版本的风格记忆 |

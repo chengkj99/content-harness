@@ -14,4 +14,8 @@ description: Content Harness 需要根据简报、提纲与已核验主张生成
 
 操作前读取 [资产与 CLI 契约](../content-harness/references/contract.md)。
 
+## 有判断，也有回应
+
+每个关键段落检查“作者怎么看、为什么值得读者在意”。建议之后可以承接读者的犹豫、给出有范围的鼓励，不用每次都以“不保证”收尾。必须保留改变事实含义的限定词和影响读者行动的前提；不要把内部隐私清单和审校话术机械搬进正文。观点性文章可以由判断支撑作者声音，不能只靠名字、旧引文或口头禅装饰通用建议。
+
 遇到缺少输入、stale 依赖或人类审批要求时，报告阻塞及具体下一步。Agent 不得自行执行 approve、confirm-author、verify-claim、verify-claims、style-promote、style-rollback。

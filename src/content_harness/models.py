@@ -220,6 +220,7 @@ class Feedback(Strict):
     before_hash: str
     after_hash: str
     diff: str
+    compared_member: str | None = None
     evidence_type: Literal["diff", "rejection", "reference-comparison"] = "diff"
     reference_path: str | None = None
     reference_excerpt: str | None = None

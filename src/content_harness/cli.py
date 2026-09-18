@@ -514,12 +514,13 @@ def style_feedback(
     reason: Annotated[str, typer.Option()],
     artifact: str = "manuscript",
     scope: str = "run",
+    before_hash: str | None = None,
 ):
-    """保存已登记版本与当前手改稿的差异，生成候选。"""
+    """保存已登记版本与当前手改稿的差异，支持发布稿和历史基线。"""
     with session(run_id) as (run, root):
         emit(
             {
-                "lesson": styles.feedback(run, root, artifact, scope, reason),
+                "lesson": styles.feedback(run, root, artifact, scope, reason, before_hash=before_hash),
                 "revision": run.state.revision,
             }
         )

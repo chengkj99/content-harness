@@ -1,4 +1,6 @@
 import difflib
+import json
+import re
 import uuid
 
 from .models import Feedback, VoiceContract
@@ -6,6 +8,7 @@ from .profiles import author_confirmed, author_path, profile, scenario_preset
 from .storage import (
     atomic_write,
     digest,
+    files,
     identifier,
     json_bytes,
     lock,
@@ -13,6 +16,7 @@ from .storage import (
     read_yaml,
     require,
     safe_path,
+    tree_hash,
     yaml_bytes,
 )
 from .workflows import resources
@@ -46,6 +50,7 @@ def voice_source_data(run, project):
     return {
         "scenario_id": scenario_id,
         "selected_styles": list(run.state.style_selection),
+        "style_packs": [pack(s) for s in dict.fromkeys(run.state.style_selection)],
         "style_intensity": run.state.style_intensity,
         "author_profile": author_path(project).read_text(),
         "author_memory": author,
@@ -66,17 +71,19 @@ def compile_voice_contract(run, project):
     references = []
     for source in data.pop("reference_files"):
         references.extend(source["references"])
-    selected = data["selected_styles"]
     dimensions = []
     guidance = {}
     requires_signature = False
-    style_packs = []
-    for style_id in dict.fromkeys(selected):
-        style = pack(style_id)
-        style_packs.append(style)
+    style_packs = data.pop("style_packs")
+    for style in style_packs:
         dimensions.extend(style.get("dimensions", []))
         for dimension in style.get("dimensions", []):
-            guidance.setdefault(dimension, style.get("anchors", {}).get("3", style["rules"]))
+            guidance.setdefault(
+                dimension,
+                style.get("dimension_guidance", {}).get(
+                    dimension, style.get("anchors", {}).get("3", style["rules"])
+                ),
+            )
         requires_signature = requires_signature or bool(style.get("requires_signature", False))
     for reference in references:
         dimensions.extend(reference.get("dimensions", []))
@@ -218,14 +225,35 @@ def compile_style(run, project, selection, intensity):
     return spec
 
 
-def feedback(run, project, artifact, scope, reason):
+def feedback(run, project, artifact, scope, reason, before_hash=None):
     require(scope in {"run", "author", "scenario"}, "INVALID_SCOPE", scope)
-    require(artifact in {"draft", "manuscript"}, "INVALID_ARTIFACT", artifact)
-    before_hash = run.state.artifacts[artifact].registered_hash
+    require(artifact in {"draft", "manuscript", "publish-package"}, "INVALID_ARTIFACT", artifact)
+    before_hash = before_hash or run.state.artifacts[artifact].registered_hash
     require(bool(before_hash), "SNAPSHOT_MISSING", "Register an initial revision first")
-    before = safe_path(run.path, "snapshots/" + before_hash.split(":")[1] + "/content").read_text()
-    after = run.artifact_path(artifact).read_text()
-    require(before != after, "NO_STYLE_DIFF", "Record feedback before checking the edited artifact")
+    require(bool(re.fullmatch(r"sha256:[0-9a-f]{64}", before_hash)), "INVALID_HASH", before_hash)
+    # The selected baseline must have been registered for THIS artifact in THIS run.
+    events = safe_path(run.path, "transitions.jsonl").read_text().splitlines()
+    require(
+        any(
+            json.loads(line)["state"]["artifacts"].get(artifact, {}).get("registered_hash")
+            == before_hash
+            for line in events
+        ),
+        "BASELINE_NOT_REGISTERED",
+        "Choose a registered revision of the requested artifact",
+    )
+    baseline = safe_path(run.path, "snapshots/" + before_hash.split(":")[1])
+    require(baseline.is_dir(), "SNAPSHOT_MISSING", before_hash)
+    before_files = files(baseline)
+    require(tree_hash(before_files) == before_hash, "SNAPSHOT_CORRUPT", before_hash)
+    member = "article.md" if artifact == "publish-package" else "content"
+    after_files = run.contents(artifact)
+    require(member in before_files and member in after_files, "ASSET_MISSING", member)
+    before, after = before_files[member].decode(), after_files[member].decode()
+    require(before != after, "NO_STYLE_DIFF", "No text change in the selected member")
+    # Freeze the user's exact input BEFORE any rework; feedback never registers or rewrites it.
+    after_hash = run.snapshot(artifact)
+    require(after_hash == tree_hash(after_files), "CONFLICT_EXTERNAL_EDIT", artifact)
     lesson = Feedback(
         lesson_id="lesson-" + uuid.uuid4().hex[:12],
         run_id=run.state.run_id,
@@ -234,13 +262,14 @@ def feedback(run, project, artifact, scope, reason):
         scenario=run.state.scenario or run.state.workflow,
         reason=reason,
         before_hash=before_hash,
-        after_hash=run.hash(artifact),
+        after_hash=after_hash,
+        compared_member=member,
         diff="".join(
             difflib.unified_diff(
                 before.splitlines(True),
                 after.splitlines(True),
-                fromfile="registered",
-                tofile="edited",
+                fromfile=f"baseline/{member}",
+                tofile=f"edited/{member}",
             )
         ),
     )

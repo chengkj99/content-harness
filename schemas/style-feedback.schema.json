@@ -48,6 +48,18 @@
       "title": "Diff",
       "type": "string"
     },
+    "compared_member": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Compared Member"
+    },
     "evidence_type": {
       "default": "diff",
       "enum": [

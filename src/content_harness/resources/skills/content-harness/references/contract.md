@@ -149,3 +149,13 @@ package 拒绝覆盖已有目录。返工时先将旧 `artifacts/60-publish-pack
 发布审批后执行 `export <run-id>` 使用配置默认目标，只有用户指定了其他已配置目标时才加 `--target <name>`。生成目录包含 article.md、titles.txt、summary.txt、sources.yaml、images.yaml 与 assets/。这是本地发布包，不是公众号发布回执。
 
 `archive` 将 run 移入 `.content-harness/archive/`；`restore <run-id>` 恢复目录和运行状态，保留事件历史。不要手工编辑 journal。
+
+## 从作者手改稿学习
+
+`style-feedback <run-id> --artifact publish-package --reason "作者修改了正文"` 比较已登记发布包中的 article.md 与手改稿。仅标题或摘要变化不会伪装成正文反馈。工具保存修改后快照，返回 compared_member；before_hash/after_hash 仍然是完整资产的文件树哈希。
+
+如首版之后已有登记过的中间版本，追加 `--before-hash sha256:...` 指定历史基线。哈希必须属于本 run 的该资产且快照完整。反馈操作不会登记手改稿、重写正文、更新审批或重新打包。
+
+分析需区分表达偏好、观点新增、事实/承诺强度变化、笔误和未改结构。项目内保存作者原样证据和正反例；框架只吸收跨作者的流程规则。单篇偏好不自动晋升长期记忆，也不将其结尾问句复制到每篇文章。用户明确要求修改配置时可直接更新项目样本，不能伪造晋升事件。
+
+风格包支持 dimension_guidance 为每个维度提供独立判据。包内容参与 voice 来源哈希，升级判据后旧约束及下游需重新审阅，不会静默套用旧 pass。CLI 检查覆盖和状态，不能代替语言质量判断或作者反馈。

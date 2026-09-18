@@ -22,4 +22,8 @@ description: 用户要使用 Content Harness 写文章、开始任务、处理�
 - 导出前核对实际目标与目录；默认执行 `export <run-id>` 使用项目 default_target，不强制 wechat。新目标不是新的平台发布接口。不得自行修改 Wiki 索引或摄入知识库。
 
 
+## 作者手改与流程改进
+
+用户要求比较手改稿、诊断框架或配置时，先做反馈分析；这类工作不依赖发布审批，不因 human_gates 中的发布门禁停止。保留手改原文与首版快照，不重建发布包来覆盖它。返回生产流程时仍遵守原有审批、事实和依赖规则。
+
 遇到缺少输入、stale 依赖或人类审批要求时，报告阻塞及具体下一步。Agent 不得自行执行 approve、confirm-author、verify-claim、verify-claims、style-promote、style-rollback。

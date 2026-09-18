@@ -15,4 +15,12 @@ description: Content Harness 用户修改措辞、拒绝某种表达或希望沉
 
 操作前读取 [资产与 CLI 契约](../content-harness/references/contract.md)。
 
+## 手改分析顺序
+
+- 用户改的是发布包 article.md 时，使用 `style-feedback --artifact publish-package`；基线已被登记成中间版时，用 `--before-hash` 明确选择原始登记快照。先核对基线，不能默认当前 manuscript 就是首版。工具会快照保存手改输入，不登记、不改稿、不代审批。
+- 逐项区分表达偏好、观点新增、事实/承诺强度变化、笔误，以及原样保留的结构。未改部分只能说明本轮未动，不能推断永远认可。
+- 对表达偏好提炼“适用场景 + 应改例 + 不应改例”。学习动机和节奏，不复制口头禅、病句、绝对化标题或一篇文章的专属故事。
+- 删除泛化的免责段，不等于取消事实限制；可在内部审校保留限制，正文是否保留取决于读者误解或照做的实际风险。新增观点返回 Claims/Brief 审核，不能由风格学习偷偷晋升为事实。
+- 用户明确要求优化项目配置时，可直接更新项目表达样本和场景配置，注明依据、适用范围及单篇样本的局限；不冒充已晋升的 style-memory，也不把个人偏好写进通用框架。
+
 遇到缺少输入、stale 依赖或人类审批要求时，报告阻塞及具体下一步。Agent 不得自行执行 approve、confirm-author、verify-claim、verify-claims、style-promote、style-rollback。

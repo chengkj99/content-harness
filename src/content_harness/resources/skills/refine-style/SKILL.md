@@ -8,10 +8,14 @@ description: Content Harness 正文需要按风格润色、去 AI 味或生成�
 输入：draft、style-spec、claims。
 1. 没有 Scene/Polish 时，保持 draft 原文成为 manuscript；有选择时按指定强度进行局部编辑。
 2. 去 AI 味检查模板过渡、空泛排比、机械总结、无根据断言；保留作者有意的正式表达，不追求检测器分数。
+   检查过渡是否交代了前后判断的因果、条件或递进；自然承接已有的句子就保留，只有连接词而缺理由时返回 Draft/Outline 补逻辑。抽象目标要有读者能辨认的具体情境或第一步；鼓励尝试时写清可做的行动与条件，不写成结果保证。
+   结合清晰表达参考检查名词化、陌生词、术语换名及为吸引注意而夸大的修辞；只做含义等价的修改。素材缺少执行者或因果时不要补造；原句已清楚就保留。未选择 Scene/Polish 时将问题交给 review-draft 并退回 Draft，不绕过第 1 条擅自润色。
 3. 不改数字、日期、链接、引文、事实标记、限定词或 protected_terms。需要事实纠错时返回 draft/claims，不在润色中偷偷改变。
 4. 登记 manuscript，再生成 style-report，input_hashes 精确绑定 draft、manuscript、style-spec；每项 changes 写位置、类型、理由，rejected 写未采用建议。
 5. style-report 必须逐项记录已选 Scene/Polish 的 rule_assessments。即使无需修改，也要以正文位置说明 already-satisfied；不能用空 changes 代替规则检查。
 输出：manuscript 与 style-report。完成标准：两者检查通过；语义含义仍需后续 review 检查，不能只看字符串门禁。
+
+操作前读取 [清晰表达原则](../content-harness/references/clear-expression.md)，按本 Skill 所处阶段执行下述检查。
 
 操作前读取 [资产与 CLI 契约](../content-harness/references/contract.md)。
 

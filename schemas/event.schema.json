@@ -28,8 +28,11 @@
           "type": "integer"
         },
         "actor": {
-          "const": "human:local-tty",
           "default": "human:local-tty",
+          "enum": [
+            "human:local-tty",
+            "human:agent-chat"
+          ],
           "title": "Actor",
           "type": "string"
         },

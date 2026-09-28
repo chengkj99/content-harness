@@ -272,6 +272,111 @@ def test_tty_approval_roundtrip_and_input_change(workspace, monkeypatch):
     assert Run(run.path).approved("brief")
 
 
+def test_chat_approval_requires_observed_hash_and_artifact_revision(workspace):
+    project, run = workspace
+    build_to_brief(run)
+    record = run.state.artifacts["brief"]
+    args = [
+        run.state.run_id, "brief", "--chat-confirmed", "--expected-hash", record.content_hash,
+        "--expected-revision", str(record.revision),
+    ]
+    assert "CONFLICT_EXTERNAL_EDIT" in call(project, "approve", *args[:-2]).output
+    assert "CONFLICT_EXTERNAL_EDIT" in call(
+        project, "approve", *args[:-1], str(record.revision + 1)
+    ).output
+    assert not Run(run.path).approved("brief")
+    result = call(project, "approve", *args)
+    assert result.exit_code == 0, result.output
+    refreshed = Run(run.path)
+    assert refreshed.approved("brief")
+    assert refreshed.state.approvals[-1].actor == "human:agent-chat"
+
+
+def test_chat_approval_rejects_changed_content_even_after_revert(workspace):
+    project, run = workspace
+    build_to_brief(run)
+    record = run.state.artifacts["brief"]
+    old_hash, old_revision = record.content_hash, record.revision
+    original = run.artifact_path("brief").read_bytes()
+    atomic_write(run.artifact_path("brief"), original + b"\nchanged")
+    call(project, "status", run.state.run_id)
+    atomic_write(run.artifact_path("brief"), original)
+    assert call(project, "check", run.state.run_id, "--artifact", "brief").exit_code == 0
+    result = call(
+        project, "approve", run.state.run_id, "brief", "--chat-confirmed",
+        "--expected-hash", old_hash, "--expected-revision", str(old_revision),
+    )
+    assert "CONFLICT_EXTERNAL_EDIT" in result.output
+    assert not Run(run.path).approved("brief")
+
+
+def test_chat_confirm_author_requires_current_hash(workspace):
+    project, _ = workspace
+    current = profiles.author_hash(project)
+    bad = call(project, "confirm-author", "--chat-confirmed", "--expected-hash", "sha256:old")
+    assert "CONFLICT_EXTERNAL_EDIT" in bad.output
+    result = call(project, "confirm-author", "--chat-confirmed", "--expected-hash", current)
+    assert result.exit_code == 0, result.output
+    confirmation = read_yaml(project / ".content-harness/author-confirmation.yaml")
+    assert confirmation["actor"] == "human:agent-chat"
+
+
+def test_chat_verify_claims_rejects_changed_batch(workspace):
+    project, run = workspace
+    build_to_brief(run)
+    claim = ledger(run).claims[0]
+    claim.type = "experience"
+    claim.status = "author-confirmed"
+    claim.provenance = "Synthetic author statement"
+    atomic_write(run.artifact_path("claims"), yaml_bytes({"claims": [claim.model_dump()]}))
+    run.scan()
+    expected = claim_batch_hash(claim_verification_items(run, pending_only=True))
+    claim.text = "Changed claim"
+    atomic_write(run.artifact_path("claims"), yaml_bytes({"claims": [claim.model_dump()]}))
+    result = call(
+        project, "verify-claims", run.state.run_id, "--chat-confirmed", "--expected-hash", expected
+    )
+    assert "CONFLICT_EXTERNAL_EDIT" in result.output
+    assert not Run(run.path).state.claim_verifications
+
+
+def test_chat_style_promotion_and_rollback_require_reviewed_versions(workspace):
+    project, run = workspace
+    build_to_manuscript(run, project)
+    lesson = styles.note_feedback(run, project, "manuscript", "scenario", "结尾更具体")
+    lesson.update(proposed_rule="结尾给出动作", eval_proposal="检查结尾是否有动作")
+    candidate = (
+        project / ".content-harness/style-memory/candidates" / (lesson["lesson_id"] + ".yaml")
+    )
+    atomic_write(candidate, yaml_bytes(lesson))
+    preview = call(project, "style-promote", run.state.run_id, lesson["lesson_id"], "--preview")
+    assert preview.exit_code == 0, preview.output
+    candidate_hash = json.loads(preview.output)["content_hash"]
+    bad = call(
+        project, "style-promote", run.state.run_id, lesson["lesson_id"],
+        "--chat-confirmed", "--expected-hash", "sha256:old",
+    )
+    assert "CONFLICT_EXTERNAL_EDIT" in bad.output
+    good = call(
+        project, "style-promote", run.state.run_id, lesson["lesson_id"],
+        "--chat-confirmed", "--expected-hash", candidate_hash,
+    )
+    assert good.exit_code == 0, good.output
+    memory = project / ".content-harness/style-memory/scenarios/wechat-longform.yaml"
+    assert read_yaml(memory)["rules"][-1]["actor"] == "human:agent-chat"
+    preview = call(project, "style-rollback", "scenario", "0", "--preview")
+    assert preview.exit_code == 0, preview.output
+    observed = json.loads(preview.output)
+    args = [
+        "scenario", "0", "--chat-confirmed", "--expected-hash", observed["content_hash"],
+        "--expected-version-hash", observed["version_hash"],
+    ]
+    assert "CONFLICT_EXTERNAL_EDIT" in call(project, "style-rollback", *args[:-2]).output
+    result = call(project, "style-rollback", *args)
+    assert result.exit_code == 0, result.output
+    assert read_yaml(memory)["actor"] == "human:agent-chat"
+
+
 def test_cas_put_rejects_external_edit(workspace):
     project, run = workspace
     source = project / "source.md"

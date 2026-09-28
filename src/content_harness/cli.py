@@ -103,12 +103,16 @@ def session(run_id, scan=True):
         yield run, root
 
 
-def human_confirm(subject, content_hash):
+def human_confirm(subject, content_hash, chat_confirmed=False, expected_hash=None):
+    if chat_confirmed:
+        require(expected_hash == content_hash, "CONFLICT_EXTERNAL_EDIT", "确认对象已变化")
+        return "human:agent-chat"
     require(is_tty(), "HUMAN_TTY_REQUIRED", "请用户在交互终端亲自执行此命令")
     typer.echo(subject)
     typer.echo("确认对象哈希: " + content_hash)
     answer = typer.prompt("确认后输入完整哈希；其他输入取消")
     require(answer == content_hash, "APPROVAL_CANCELLED", "哈希未确认")
+    return "human:local-tty"
 
 
 def is_tty():
@@ -218,18 +222,25 @@ def configure(
 
 
 @command()
-def confirm_author():
+def confirm_author(
+    chat_confirmed: bool = False, expected_hash: str | None = None, preview: bool = False
+):
     """由用户确认作者资料；内容改变后需重新确认。"""
     root = project()
     content_hash = profiles.author_hash(root)
-    human_confirm(profiles.author_path(root).read_text(), content_hash)
+    if preview:
+        emit({"subject": profiles.author_path(root).read_text(), "content_hash": content_hash})
+        return
+    actor = human_confirm(
+        profiles.author_path(root).read_text(), content_hash, chat_confirmed, expected_hash
+    )
     with lock(safe_path(root, ".content-harness")):
         require(
             profiles.author_hash(root) == content_hash, "CONFLICT_EXTERNAL_EDIT", "author profile"
         )
         atomic_write(
             safe_path(root, ".content-harness/author-confirmation.yaml"),
-            yaml_bytes({"content_hash": content_hash, "at": now(), "actor": "human:local-tty"}),
+            yaml_bytes({"content_hash": content_hash, "at": now(), "actor": actor}),
         )
     emit({"content_hash": content_hash})
 
@@ -366,7 +377,14 @@ def put(
 
 
 @command()
-def approve(run_id: str, gate: str):
+def approve(
+    run_id: str,
+    gate: str,
+    chat_confirmed: bool = False,
+    expected_hash: str | None = None,
+    expected_revision: int | None = None,
+    preview: bool = False,
+):
     """用户交互确认，绑定当前资产哈希与 revision；不执行外部发布。"""
     with session(run_id) as (run, _):
         require(gate in run.workflow["gates"], "GATE_UNKNOWN", gate)
@@ -375,7 +393,15 @@ def approve(run_id: str, gate: str):
         require(record.status == "done" and not run.blockers(name), "GATE_BLOCKED", gate)
         validate_artifact(run, name)
         expected, revision = record.content_hash, record.revision
-        human_confirm(f"{gate}: {run.artifact_path(name)}", expected)
+        if preview:
+            emit({"gate": gate, "artifact": name, "content_hash": expected,
+                  "artifact_revision": revision, "path": str(run.artifact_path(name))})
+            return
+        if chat_confirmed:
+            require(expected_revision == revision, "CONFLICT_EXTERNAL_EDIT", name)
+        actor = human_confirm(
+            f"{gate}: {run.artifact_path(name)}", expected, chat_confirmed, expected_hash
+        )
         run.scan()
         require(
             record.status == "done"
@@ -392,6 +418,7 @@ def approve(run_id: str, gate: str):
                 artifact=name,
                 content_hash=expected,
                 artifact_revision=revision,
+                actor=actor,
             )
         )
         run.save("approve:" + gate)
@@ -399,13 +426,19 @@ def approve(run_id: str, gate: str):
 
 
 @command()
-def verify_claim(run_id: str, claim_id: str):
+def verify_claim(
+    run_id: str, claim_id: str, chat_confirmed: bool = False, expected_hash: str | None = None,
+    preview: bool = False,
+):
     """用户核验高风险事实或确认亲历；绑定具体 claim 内容。"""
     with session(run_id) as (run, _):
         claim = next((c for c in ledger(run).claims if c.claim_id == claim_id), None)
         require(claim is not None, "CLAIM_UNKNOWN", claim_id)
         value = claim_hash(claim, run.hash("sources"))
-        human_confirm(claim.model_dump_json(indent=2), value)
+        if preview:
+            emit({"claim": claim.model_dump(), "content_hash": value})
+            return
+        human_confirm(claim.model_dump_json(indent=2), value, chat_confirmed, expected_hash)
         current = next((c for c in ledger(run).claims if c.claim_id == claim_id), None)
         require(
             current is not None and claim_hash(current, run.hash("sources")) == value,
@@ -413,18 +446,29 @@ def verify_claim(run_id: str, claim_id: str):
             claim_id,
         )
         run.state.claim_verifications[claim_id] = value
-        run.save("verify-claim:" + claim_id)
+        run.save("verify-claim:" + claim_id + (":chat" if chat_confirmed else ""))
         emit({"claim_id": claim_id, "revision": run.state.revision})
 
 
 @command()
-def verify_claims(run_id: str):
+def verify_claims(
+    run_id: str, chat_confirmed: bool = False, expected_hash: str | None = None,
+    preview: bool = False,
+):
     """由用户一次核验当前全部待确认亲历与高风险事实。"""
     with session(run_id) as (run, _):
         items = claim_verification_items(run, pending_only=True)
         require(bool(items), "NO_CLAIMS_TO_VERIFY", run_id)
         value = claim_batch_hash(items)
-        human_confirm(json.dumps({"claims": items}, ensure_ascii=False, indent=2), value)
+        if preview:
+            emit({"claims": items, "content_hash": value})
+            return
+        human_confirm(
+            json.dumps({"claims": items}, ensure_ascii=False, indent=2),
+            value,
+            chat_confirmed,
+            expected_hash,
+        )
         current = claim_verification_items(run, pending_only=True)
         require(
             [item["claim_id"] for item in current] == [item["claim_id"] for item in items]
@@ -435,7 +479,7 @@ def verify_claims(run_id: str):
         run.state.claim_verifications.update(
             {item["claim_id"]: item["content_hash"] for item in current}
         )
-        run.save("verify-claims")
+        run.save("verify-claims:chat" if chat_confirmed else "verify-claims")
         emit(
             {
                 "claim_ids": [item["claim_id"] for item in current],
@@ -554,7 +598,10 @@ def style_note(
 
 
 @command()
-def style_promote(run_id: str, lesson_id: str):
+def style_promote(
+    run_id: str, lesson_id: str, chat_confirmed: bool = False, expected_hash: str | None = None,
+    preview: bool = False,
+):
     """用户确认候选后，写入作者或场景记忆。"""
     root = project()
     identifier(run_id)
@@ -562,12 +609,23 @@ def style_promote(run_id: str, lesson_id: str):
     path = safe_path(root, f".content-harness/style-memory/candidates/{lesson_id}.yaml")
     data = path.read_bytes()
     Feedback.model_validate(read_yaml(path))
-    human_confirm(data.decode(), digest(data))
-    emit({"memory": styles.promote(root, run_id, lesson_id, digest(data))})
+    if preview:
+        emit({"candidate": read_yaml(path), "content_hash": digest(data)})
+        return
+    actor = human_confirm(data.decode(), digest(data), chat_confirmed, expected_hash)
+    emit({"memory": styles.promote(root, run_id, lesson_id, digest(data), actor=actor)})
 
 
 @command()
-def style_rollback(scope: str, version: int, scenario: str | None = None):
+def style_rollback(
+    scope: str,
+    version: int,
+    scenario: str | None = None,
+    chat_confirmed: bool = False,
+    expected_hash: str | None = None,
+    expected_version_hash: str | None = None,
+    preview: bool = False,
+):
     """用户将指定旧版本恢复为新版本，保留历史。"""
     root = project()
     config = profiles.profile(root)
@@ -575,9 +633,27 @@ def style_rollback(scope: str, version: int, scenario: str | None = None):
     memory_root = safe_path(root, ".content-harness/style-memory")
     path = styles.memory_target(memory_root, scope, scenario)
     expected = digest(path.read_bytes())
-    old = safe_path(memory_root, f"versions/{path.stem}/{version}.yaml")
-    human_confirm(f"恢复为版本 {version}\n{old.read_text()}", expected)
-    emit({"memory": styles.rollback(root, scope, scenario, version, expected)})
+    old = styles.version_path(memory_root, path, version)
+    if not old.exists() and scope == "scenario" and scenario != "author":
+        old = safe_path(memory_root, f"versions/{path.stem}/{version}.yaml")
+    old_hash = digest(old.read_bytes())
+    if preview:
+        emit({"current": read_yaml(path), "target": read_yaml(old),
+              "content_hash": expected, "version_hash": old_hash})
+        return
+    actor = human_confirm(
+        f"恢复为版本 {version}\n{old.read_text()}", expected, chat_confirmed, expected_hash
+    )
+    if chat_confirmed:
+        require(expected_version_hash == old_hash, "CONFLICT_EXTERNAL_EDIT", "历史版本已变化")
+    emit(
+        {
+            "memory": styles.rollback(
+                root, scope, scenario, version, expected,
+                actor=actor, expected_version_hash=old_hash,
+            )
+        }
+    )
 
 
 @command()

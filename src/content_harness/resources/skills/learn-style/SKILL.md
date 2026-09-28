@@ -10,7 +10,7 @@ description: Content Harness 用户修改措辞、拒绝某种表达或希望沉
 1. 用户已经手改时，在 check 登记手改稿之前运行 style-feedback；只有拒稿理由或对标样稿时运行 style-note。默认 scope=run，只有明确属于长期作者或场景偏好时才建议 author/scenario。
 2. 在返回的候选文件中填写 proposed_rule、eval_proposal；对于模型/热点/平台变化相关规则填写 review_after。
 3. eval_proposal 至少给出一个应改示例和一个不应改示例，说明事实保持条件。单篇临时改动不得推断为作者永久人设。
-4. 展示候选 diff、规则、作用域和例子。长期晋升由用户执行 style-promote；Agent 不能自行调用。回退由用户执行 style-rollback。
+4. 展示候选 diff、规则、作用域和例子。在聊天中取得用户针对该候选的明确确认后，Agent 调用 style-promote 的 --chat-confirmed 模式；回退同样先展示目标版本并确认，再调用 style-rollback。
 输出：candidate lesson。完成标准是证据与规则可审阅；保存候选并不表示已学会或已验证有效。
 
 操作前读取 [资产与 CLI 契约](../content-harness/references/contract.md)。
@@ -23,4 +23,4 @@ description: Content Harness 用户修改措辞、拒绝某种表达或希望沉
 - 删除泛化的免责段，不等于取消事实限制；可在内部审校保留限制，正文是否保留取决于读者误解或照做的实际风险。新增观点返回 Claims/Brief 审核，不能由风格学习偷偷晋升为事实。
 - 用户明确要求优化项目配置时，可直接更新项目表达样本和场景配置，注明依据、适用范围及单篇样本的局限；不冒充已晋升的 style-memory，也不把个人偏好写进通用框架。
 
-遇到缺少输入、stale 依赖或人类审批要求时，报告阻塞及具体下一步。Agent 不得自行执行 approve、confirm-author、verify-claim、verify-claims、style-promote、style-rollback。
+遇到缺少输入、stale 依赖或人类审批要求时，展示待确认的具体内容并在聊天中等待用户明确回复。确认后，Agent 可用对应命令的 --chat-confirmed 模式记录决定，传入审阅时的哈希；approve 还要传入资产 revision。内容变化时重新请求确认；不得自行决定或把一般性的“继续”当成确认。

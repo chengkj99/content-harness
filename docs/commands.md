@@ -78,7 +78,7 @@ content-harness configure --style-reference '.content-harness/style-references/a
 | `style-promote <run-id> <lesson-id>` | 是否把候选偏好用于以后的作者/场景表达 |
 | `style-rollback ...` | 是否恢复某个旧版本的风格记忆 |
 
-AI 给你填好实际编号的命令，你读过对应内容后在交互终端执行，按提示输入当前哈希（版本指纹）。AI 不代你执行。这是当前工具的确认方式，不是“在聊天里答应过，以后就全部自动通过”。
+AI 展示当前对象后，你在聊天中明确回复确认该对象，Agent 才调用对应命令记录决定。你不必切到终端，也不必输入哈希。一般性的“继续”不会自动批准；对象变化时需重新审阅。
 
 ## 那四条 uv 命令是写文章用的吗
 

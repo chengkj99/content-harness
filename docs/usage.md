@@ -6,14 +6,14 @@
 
 ## 完整链路
 
-1. init 创建配置，编辑 author_sources 指定的作者资料（默认 author-profile.md），由用户 confirm-author。
+1. init 创建配置，编辑 author_sources 指定的作者资料（默认 author-profile.md），由用户在聊天中确认后记录 confirm-author。
 2. new 创建日期加 slug 的 run；同一天同名会报冲突。
 3. Agent 保存 idea、sources、claims、brief，每步 check --artifact。
-4. 用户 approve brief，Agent 执行 style 编译默认或所选风格。
+4. 用户在聊天中确认 brief，Agent 记录 approve 并执行 style 编译默认或所选风格。
 5. Agent 完成 outline、draft、manuscript、style-report、fact-review、editorial-review。
 6. 评审通过后生成 visual-plan、visual-assets；无图时写明原因。
 7. `package <run-id> --titles titles.txt --summary summary.txt` 创建包。
-8. 用户 approve publish，再 export 得到本地文章包。
+8. 用户在聊天中确认 publish，Agent 记录 approve，再 export 得到本地文章包。
 
 各资产格式见 [Skill 契约](../src/content_harness/resources/skills/content-harness/references/contract.md)。draft 同时依赖 brief、outline、claims、style-spec：分别确定读者与边界、结构、事实、表达。
 

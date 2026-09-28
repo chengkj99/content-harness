@@ -36,7 +36,7 @@ def test_skill_contracts_do_not_depend_on_private_skills():
             assert "kj-skills" not in text
     for path in (root / "skills").glob("*/SKILL.md"):
         assert "description:" in path.read_text()
-        assert "Agent 不得自行执行 approve" in path.read_text()
+        assert "--chat-confirmed" in path.read_text()
 
 
 def image_plan():

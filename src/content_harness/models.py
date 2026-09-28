@@ -24,7 +24,7 @@ class Approval(Strict):
     artifact: str
     content_hash: str
     artifact_revision: int
-    actor: Literal["human:local-tty"] = "human:local-tty"
+    actor: Literal["human:local-tty", "human:agent-chat"] = "human:local-tty"
     decision: Literal["approved"] = "approved"
 
 

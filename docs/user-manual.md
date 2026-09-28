@@ -28,7 +28,7 @@ Content Harness 是一套给 AI 用的写作流程和工具，帮你把一个想
 | stale | 上游资产改过，这个结果需要重新处理（不表示文件被删除） |
 | Skills | 给 AI 看的操作指引，共 13 个，安装到 AI 客户端可发现的目录 |
 | 场景（scenario） | 风格记忆的分组，例如 book-notes、product-notes，让不同类型文章分别积累表达偏好 |
-| 哈希指纹 | 每次人工确认时需输入的 `sha256:` 开头字符串，绑定你审阅时的内容版本，改稿后需重新确认 |
+| 哈希指纹 | 内部用于绑定审阅版本的 `sha256:` 指纹；聊天确认时由 Agent 传递，你不必输入 |
 
 过程状态固定保存在项目的隐藏目录 `.content-harness` 中；你通常只需看成品目录。
 
@@ -49,25 +49,21 @@ content-harness init . --preset wiki                # 创建配置，不生成�
 content-harness install-skills --client codex       # 也支持其他客户端目录
 ```
 
-初始化后需要完成一次**作者说明确认**：编辑作者资料文件（默认 `author-profile.md`），写明目标读者、表达偏好、可用的个人经历和禁止的表达，然后亲自执行：
-
-```bash
-content-harness confirm-author
-```
+初始化后需要完成一次**作者说明确认**：编辑作者资料文件（默认 `author-profile.md`），写明目标读者、表达偏好、可用的个人经历和禁止的表达，然后让 Agent 展示完整内容，在聊天中明确回复确认。
 
 ## 四、写一篇文章的完整流程
 
-日常使用中你主要做三件事：说清想写什么、确认方向、审阅成稿。以下是背后的完整链路（大部分由 AI 执行，标注“**你执行**”的需要你在终端亲自确认）：
+日常使用中你主要做三件事：说清想写什么、确认方向、审阅成稿。以下是背后的完整链路（大部分由 AI 执行，标注“**你确认**”的需要你在聊天中审阅并明确回复）：
 
 1. **开始**：AI 执行 `new` 创建 run，编号为日期加 slug。
 2. **整理依据**：AI 保存 idea、sources（来源）、claims（事实主张）、brief（写作方向说明），每步用 `check --artifact` 登记。
-3. **确认方向**（**你执行**）：审阅 brief 后执行 `approve <run-id> brief`，输入屏幕显示的哈希指纹。
+3. **确认方向**（**你确认**）：审阅 brief 后在聊天中明确确认方向。
 4. **固化声音并选风格**：AI 先执行 `voice`，把作者资料、场景记忆和正反样稿带进选题卡；选题卡通过后再执行 `style`。内置风格包括正常表达（neutral）、个人叙事（personal-narrative-zh）、公众号高传播（wechat-high-engagement）与去 AI 味（natural-human-zh），可以组合。
 5. **写作**：AI 依次完成 outline（提纲）、draft（初稿）、manuscript（成稿）、style-report（风格检查报告）。
-6. **评审**：AI 完成 fact-review（事实检查）和 editorial-review（编辑检查）。遇到高风险事实或需认定为你亲历的内容，会请你执行一次 `verify-claims`；需要拆开核对时仍可执行 `verify-claim`（**你执行**）。
+6. **评审**：AI 完成 fact-review（事实检查）和 editorial-review（编辑检查）。遇到高风险事实或需认定为你亲历的内容，会逐条展示并请你在聊天中核验；需要拆开核对时可以单条确认（**你确认**）。
 7. **配图**：需要图时生成 visual-plan 和 visual-assets；不需要时写明原因。
 8. **打包**：AI 执行 `package <run-id> --titles titles.txt --summary summary.txt`。
-9. **最终确认**（**你执行**）：审阅正文、标题、摘要、图片后执行 `approve <run-id> publish`。
+9. **最终确认**（**你确认**）：审阅正文、标题、摘要、图片后在聊天中明确确认最终稿。
 10. **导出**：AI 执行 `export`，文章包保存到你配置的成品目录。
 
 成品目录结构：
@@ -82,7 +78,7 @@ content-harness confirm-author
 └── assets/        配图（需要时才有）
 ```
 
-不懂命令时，把[上手指南](getting-started.md#从一个想法到一篇文章)里的提示词直接发给 AI 即可，AI 会给你填好实际编号的确认命令。
+不懂命令时，把[上手指南](getting-started.md#从一个想法到一篇文章)里的提示词直接发给 AI 即可，AI 会展示具体对象并记录你的确认。
 
 ## 五、命令速查
 
@@ -112,7 +108,7 @@ content-harness confirm-author
 | `package` / `export` | 创建发布包 / 导出到成品目录 |
 | `archive` / `restore` | 归档 / 恢复 run |
 
-### 需要你亲自确认的命令
+### 需要你审阅的确认对象
 
 | 命令 | 你审阅的内容 |
 |---|---|
@@ -124,7 +120,7 @@ content-harness confirm-author
 | `style-promote <run-id> <lesson-id>` | 是否把候选偏好写入长期风格记忆 |
 | `style-rollback <scope> <version>` | 是否恢复旧版本风格记忆 |
 
-这些命令在交互终端执行，按提示输入当前哈希指纹，AI 不代你执行。
+在聊天中逐项审阅并明确回复后，Agent 才调用对应命令的聊天确认模式。终端交互命令保留备用。
 
 ## 六、让工具越来越懂你：风格反馈
 
@@ -132,7 +128,7 @@ content-harness confirm-author
 
 1. **在重新登记手改稿之前**，让 AI 执行 `style-feedback <run-id> --artifact manuscript --scope scenario --reason '你的理由'`，保存修改前后差异。只有拒稿理由或对标稿、没有手改文件时，执行 `style-note`。
 2. AI 整理候选规则，给出应该改和不应该改的例子。
-3. 你审阅后亲自执行 `style-promote`，规则才进入长期记忆并用于以后的文章。
+3. 你审阅后在聊天中明确确认候选，由 Agent 执行 `style-promote`，规则才进入长期记忆并用于以后的文章。
 
 scope 三档：`run` 只记本次，`scenario` 归到内容场景（推荐），`author` 作者级偏好（适用面广，谨慎确认）。只是临时调整时直接告诉 AI“这次不要记为长期偏好”即可。
 

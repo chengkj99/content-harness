@@ -223,6 +223,7 @@ class Run:
                     {
                         "gate": gate,
                         "hash": self.state.artifacts[name].content_hash,
+                        "artifact_revision": self.state.artifacts[name].revision,
                         "command": f"content-harness approve {self.state.run_id} {gate}",
                     }
                 )

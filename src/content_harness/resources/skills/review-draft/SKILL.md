@@ -22,4 +22,4 @@ description: Content Harness 需要对润色后的成稿做事实、编辑与风
 - 按 voice-contract.dimension_guidance 逐项找证据，同时寻找最薄弱段落。无修改并非错误，但不得用“初稿落盘前已优化”或“无违禁词”证明全部合格。
 - 区分不承诺外部结果与支持读者尝试；内部校验通过不等于作者认可。反馈出现新观点、保证性表述或逻辑歧义时分别说明，不能全当成措辞偏好。
 
-遇到缺少输入、stale 依赖或人类审批要求时，报告阻塞及具体下一步。Agent 不得自行执行 approve、confirm-author、verify-claim、verify-claims、style-promote、style-rollback。
+遇到缺少输入、stale 依赖或人类审批要求时，展示待确认的具体内容并在聊天中等待用户明确回复。确认后，Agent 可用对应命令的 --chat-confirmed 模式记录决定，传入审阅时的哈希；approve 还要传入资产 revision。内容变化时重新请求确认；不得自行决定或把一般性的“继续”当成确认。

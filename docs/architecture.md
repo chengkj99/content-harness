@@ -62,7 +62,7 @@ flowchart TD
 
 手改更新 content_hash/revision，check 才登记 registered_hash 并保存只读快照。依赖变化精确传播 stale；review 还必须声明当前输入哈希，旧报告不能自动复活。
 
-审批同时绑定哈希和资产 revision；改稿后恢复旧字节也需重新审批。交互终端确认是可审计流程，不是身份认证。
+审批同时绑定哈希和资产 revision；改稿后恢复旧字节也需重新审批。用户可在聊天中审阅并明确确认，Agent 用审阅时的哈希和 revision 记录决定；终端交互确认仍可用。两种渠道都不是身份认证。
 
 ## 检查边界
 

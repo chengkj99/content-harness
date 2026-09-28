@@ -321,7 +321,7 @@ def memory_target(root, scope, scenario):
     return path
 
 
-def promote(project, run_id, lesson_id, expected_hash):
+def promote(project, run_id, lesson_id, expected_hash, actor="human:local-tty"):
     root = safe_path(project, ".content-harness/style-memory")
     identifier(lesson_id)
     with lock(root):
@@ -350,7 +350,7 @@ def promote(project, run_id, lesson_id, expected_hash):
                     "eval": lesson.eval_proposal,
                     "review_after": lesson.review_after,
                     "at": now(),
-                    "actor": "human:local-tty",
+                    "actor": actor,
                 }
             )
             atomic_write(target, yaml_bytes(current))
@@ -372,7 +372,9 @@ def version_path(root, target, version):
     return safe_path(root, f"versions/{relative}/{version}.yaml")
 
 
-def rollback(project, scope, scenario, version, expected_hash):
+def rollback(
+    project, scope, scenario, version, expected_hash, actor="human:local-tty", expected_version_hash=None
+):
     root = safe_path(project, ".content-harness/style-memory")
     with lock(root):
         target = memory_target(root, scope, scenario)
@@ -385,13 +387,19 @@ def rollback(project, scope, scenario, version, expected_hash):
         # history as a custom scenario named "author".
         if not history.exists() and scope == "scenario" and scenario != "author":
             history = safe_path(root, f"versions/{target.stem}/{version}.yaml")
+        if expected_version_hash is not None:
+            require(
+                digest(history.read_bytes()) == expected_version_hash,
+                "CONFLICT_EXTERNAL_EDIT",
+                "style memory version",
+            )
         old = read_yaml(history)
         save_version(root, target, current)
         result = {
             "version": current["version"] + 1,
             "rules": old["rules"],
             "rollback_from": version,
-            "actor": "human:local-tty",
+            "actor": actor,
             "at": now(),
         }
         atomic_write(target, yaml_bytes(result))

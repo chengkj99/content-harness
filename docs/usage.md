@@ -14,6 +14,7 @@
 6. 评审通过后生成 visual-plan、visual-assets；无图时写明原因。
 7. `package <run-id> --titles titles.txt --summary summary.txt` 创建包。
 8. 用户在聊天中确认 publish，Agent 记录 approve，再 export 得到本地文章包。
+9. Agent 主动执行 learn-style 的完成后学习检查：有人工修改或明确反馈依据时展示候选，无依据时说明无候选；用户明确确认具体候选后才保存长期偏好。此步骤不阻塞交付，也不依赖公众号发布。
 
 各资产格式见 [Skill 契约](../src/content_harness/resources/skills/content-harness/references/contract.md)。draft 同时依赖 brief、outline、claims、style-spec：分别确定读者与边界、结构、事实、表达。
 

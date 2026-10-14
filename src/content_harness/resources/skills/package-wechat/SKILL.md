@@ -11,6 +11,7 @@ description: Content Harness 成稿、风格和配图均通过检查，需要生
 3. 已有发布包不会自动覆盖；返工先把旧包移到 run 内的唯一备份目录，再重新 package。
 4. check --gate publish 后展示标题、摘要、正文、图清单、输出位置与哈希，等用户 approve publish。
 5. 用户批准后 export。M1 只交付本地发布包，不操作公众号接口，不声称已发布。
+6. 导出成功后主动执行 [learn-style](../learn-style/SKILL.md) 的完成后学习检查；有依据才提出候选，用户明确确认后才保存长期偏好。
 输出：publish-package。完成标准：当前内容通过检查并经用户审批后成功导出。
 
 操作前读取 [资产与 CLI 契约](../content-harness/references/contract.md)。

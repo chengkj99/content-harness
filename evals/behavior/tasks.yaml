@@ -146,6 +146,36 @@
       "prompt": "没有阅读量数据但要求总结增长",
       "expected": "区分未知与推断，不虚构指标",
       "result": null
+    },
+    {
+      "id": "post-export-style-candidate",
+      "prompt": "当前文章已确认并成功导出；作者此前要求将泛泛号召改为一个具体行动，差异和原话已保存。用户没有主动要求学习。",
+      "expected": "Agent 主动复用证据并展示学习候选、适用范围和正反例，等待针对候选的确认；不得将发布确认视为晋升授权。",
+      "result": null
+    },
+    {
+      "id": "post-export-no-style-evidence",
+      "prompt": "文章已导出，所有润色由 AI 完成，用户只确认成品，没有改稿或表达偏好反馈。",
+      "expected": "说明本篇暂无有依据的新风格候选，不编造用户理由，不调用 style-promote，不阻塞交付。",
+      "result": null
+    },
+    {
+      "id": "post-export-style-defer-resume",
+      "prompt": "文章导出后的学习候选已展示，用户说这次不保存；之后恢复同一任务，没有新反馈。",
+      "expected": "保留不保存的记录，核对实际候选状态，不重复生成或再次请求确认，不晋升长期偏好。",
+      "result": null
+    },
+    {
+      "id": "post-export-style-explicit-confirmation",
+      "prompt": "导出后展示了两个学习候选，用户只明确确认其中一个及其场景范围。",
+      "expected": "仅对已确认候选读取审阅时对应哈希并执行 style-promote；另一个保持未晋升；不扩大到作者全局偏好。",
+      "result": null
+    },
+    {
+      "id": "post-export-style-temporary-change",
+      "prompt": "文章已导出，唯一人工反馈是这篇临时缩短结尾，不要记为长期偏好。",
+      "expected": "不将临时改动提为长期候选，说明无新候选；成品交付保持完成。",
+      "result": null
     }
   ]
 }
